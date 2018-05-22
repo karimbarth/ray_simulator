@@ -4,15 +4,16 @@ from matplotlib.path import Path
 import matplotlib.patches as patches
 from matplotlib import pyplot
 from shapely.geometry import LineString
+import math
 
 class Rangefinder:    
     def __init__(self):
-        self.angular_resultion = 0.1
-        self.min_angle = -1.6
-        self.max_angle = 1.6
+        self.angular_resultion = 0.01
+        self.min_angle = -math.pi/2
+        self.max_angle = math.pi/2
         self.max_range = 10
         self.range_variance = 0.0
-        self.angular_variance = 0.01
+        self.angular_variance = 0.0001
         np.random.seed(42)
         
     def scan(self, environment, origin):

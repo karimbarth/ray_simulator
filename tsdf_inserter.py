@@ -20,11 +20,11 @@ def getRaytracingHelperVariables(observation_origin, observation_ray,t_start, t_
     grid_index = np.round(traversal_start_scaled)
     grid_step = np.sign(traversal_ray_scaled)
     #adjustment = (grid_step > 0).astype(float)
-    #grid_index_adjusted = grid_index + adjustment
+    grid_index_adjusted = grid_index + grid_step    
+    t_max = (grid_index_adjusted - traversal_start_scaled) * traversal_ray_scaled_inv
     t_delta = grid_step * traversal_ray_scaled_inv
-    t_max = (grid_index - traversal_start_scaled) * traversal_ray_scaled_inv + 0.5 * t_delta * grid_step
     return grid_index, grid_step, t_max, t_delta
-
+'''
 class DefaultTSDFRangeInserter:   
     
     def __init__(self):
@@ -59,7 +59,7 @@ class DefaultTSDFRangeInserter:
                 self.updateCell(tsdf, cell_index, ray_range - distance, ray_range)
                 t = t_next
                 t_max[min_coeff_idx] += t_delta[min_coeff_idx]
-
+'''
 #from  https://stackoverflow.com/questions/2827393/angles-between-two-n-dimensional-vectors-in-python   
 def unit_vector(vector):
     """ Returns the unit vector of the vector.  """
@@ -95,8 +95,8 @@ class ScanNormalTSDFRangeInserter:
         
     def updateCell(self, tsdf, cell_index, update_distance, ray_length, update_weight):       
         if(abs(update_distance)< tsdf.truncation_distance):
-            updated_weight = tsdf.getWeight(cell_index) + update_weight
-            updated_tsdf = (tsdf.getTSDF(cell_index) * tsdf.getWeight(cell_index) + update_distance * update_weight) / updated_weight    
+            updated_weight = min(tsdf.getWeight(cell_index) + update_weight,100)
+            updated_tsdf = (tsdf.getTSDF(cell_index) * tsdf.getWeight(cell_index) + update_distance * update_weight) / (update_weight + tsdf.getWeight(cell_index))   
             tsdf.setWeight(cell_index, updated_weight)
             tsdf.setTSDF(cell_index, updated_tsdf)
     
@@ -150,6 +150,7 @@ class ScanNormalTSDFRangeInserter:
         for idx, hit in enumerate(hits):      
             #print('origin',origin)       
             #print('hit',hit)      
+            '''
             neighbor_indices = np.array(list(range(idx-int(np.floor(self.n_normal_samples/2)), idx)) + list(range(idx+1, idx+int(np.ceil(self.n_normal_samples/2) + 1))))
             neighbor_indices = neighbor_indices[neighbor_indices >= 0]
             neighbor_indices = neighbor_indices[neighbor_indices < n_hits]
@@ -157,12 +158,9 @@ class ScanNormalTSDFRangeInserter:
             normal_orientations += [normal_orientation]
             normal_estimation_weight_sums += [normal_estimation_weight_sum]
             normal_orientation_variances += [normal_var]
+            '''
             hit = np.array(hit)
-            ray = hit - origin
-            if(min(abs(ray))/tsdf.resolution < 0.5):
-                #TODO handle perpendicular case
-                continue
-            
+            ray = hit - origin            
             ray_range = np.linalg.norm(ray)        
             range_inv = 1.0 / ray_range
             t_truncation_distance = tsdf.truncation_distance * range_inv
@@ -171,10 +169,11 @@ class ScanNormalTSDFRangeInserter:
             grid_index, grid_step, t_max, t_delta = getRaytracingHelperVariables(origin, ray, t_start,t_end, 1. / tsdf.resolution)
             t = 0
             while t < 1.0 + t_truncation_distance :                
-                #print('t',t,'t_max',t_max,'t_delta',t_delta)
+                #print('t',t,'t_max',t_max,'t_delta',t_delta)     
+                #print('grid_index',grid_index)
                 t_next = np.min(t_max)
                 min_coeff_idx = np.argmin(t_max)
-                sampling_point = origin + (t + t_next)/2 * ray
+                sampling_point = grid_index * tsdf.resolution #origin + (t + t_next)/2 * ray
                 #print('sampling_point',sampling_point,'t',origin + (t) * ray,'tn',origin + (t_next) * ray)
                 cell_index = tsdf.getCellIndexAtPosition(sampling_point)
                 cell_center = tsdf.getPositionAtCellIndex(cell_index)
@@ -182,5 +181,6 @@ class ScanNormalTSDFRangeInserter:
                 self.updateCell(tsdf, cell_index, ray_range - distance, ray_range, 1)                
                 #print('cell_index', cell_index)      
                 t = t_next
+                grid_index[min_coeff_idx] += grid_step[min_coeff_idx]
                 t_max[min_coeff_idx] += t_delta[min_coeff_idx]
         #self.drawScanWithNormals(hits, normal_orientations, origin, normal_estimation_weight_sums)
