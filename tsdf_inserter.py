@@ -17,12 +17,12 @@ def getRaytracingHelperVariables(observation_origin, observation_ray,t_start, t_
     traversal_end_scaled = traversal_end * grid_size_inv
     traversal_ray_scaled = traversal_end_scaled - traversal_start_scaled
     traversal_ray_scaled_inv =(1. / traversal_ray_scaled[0], 1. / traversal_ray_scaled[1])
-    grid_index = np.floor(traversal_start_scaled)
+    grid_index = np.round(traversal_start_scaled)
     grid_step = np.sign(traversal_ray_scaled)
-    adjustment = (grid_step > 0).astype(float)
-    grid_index_adjusted = grid_index + adjustment
-    t_max = (grid_index_adjusted -traversal_start_scaled)*traversal_ray_scaled_inv
+    #adjustment = (grid_step > 0).astype(float)
+    #grid_index_adjusted = grid_index + adjustment
     t_delta = grid_step * traversal_ray_scaled_inv
+    t_max = (grid_index - traversal_start_scaled) * traversal_ray_scaled_inv + 0.5 * t_delta * grid_step
     return grid_index, grid_step, t_max, t_delta
 
 class DefaultTSDFRangeInserter:   
@@ -32,8 +32,8 @@ class DefaultTSDFRangeInserter:
         
     def updateCell(self, tsdf, cell_index, update_distance, ray_length):       
         if(abs(update_distance)< tsdf.truncation_distance):
-            updated_weight = tsdf.weights[cell_index] + self.update_weight
-            updated_tsdf = (tsdf.tsdf[cell_index] * tsdf.weights[cell_index] + update_distance * self.update_weight) / updated_weight    
+            updated_weight = tsdf.getWeight(cell_index) + self.update_weight
+            updated_tsdf = (tsdf.getTSDF(cell_index) * tsdf.getWeight(cell_index) + update_distance * self.update_weight) / updated_weight    
             tsdf.setWeight(cell_index, updated_weight)
             tsdf.setTSDF(cell_index, updated_tsdf)
         
@@ -41,7 +41,7 @@ class DefaultTSDFRangeInserter:
         origin = np.array(origin)
         for hit in hits:
             hit = np.array(hit)
-            grid_index, grid_step, t_max, t_delta = getRaytracingHelperVariables(origin, hit, 0., 1.1, 1. / tsdf.resolution)
+            grid_index, grid_step, t_max, t_delta = getRaytracingHelperVariables(origin, hit-origin, 0., 1.1, 1. / tsdf.resolution)
             t = 0
             ray = hit - origin
             ray_range = np.linalg.norm(ray)        
@@ -52,7 +52,7 @@ class DefaultTSDFRangeInserter:
             while t < t_end :
                 t_next = np.min(t_max)
                 min_coeff_idx = np.argmin(t_max)
-                sampling_point = origin + t * ray
+                sampling_point = origin + (t + t_next)/2 * ray
                 cell_index = tsdf.getCellIndexAtPosition(sampling_point)
                 cell_center = tsdf.getPositionAtCellIndex(cell_index)
                 distance = np.linalg.norm(cell_center - origin)
@@ -92,10 +92,11 @@ class ScanNormalTSDFRangeInserter:
         self.default_weight = 1
         self.normal_distance_factor = 1
         
+        
     def updateCell(self, tsdf, cell_index, update_distance, ray_length, update_weight):       
         if(abs(update_distance)< tsdf.truncation_distance):
-            updated_weight = tsdf.weights[cell_index] + update_weight
-            updated_tsdf = (tsdf.tsdf[cell_index] * tsdf.weights[cell_index] + update_distance * update_weight) / updated_weight    
+            updated_weight = tsdf.getWeight(cell_index) + update_weight
+            updated_tsdf = (tsdf.getTSDF(cell_index) * tsdf.getWeight(cell_index) + update_distance * update_weight) / updated_weight    
             tsdf.setWeight(cell_index, updated_weight)
             tsdf.setTSDF(cell_index, updated_tsdf)
     
@@ -107,7 +108,7 @@ class ScanNormalTSDFRangeInserter:
         for neighbor in neighbors:
             tangent_angle = angle(sample-neighbor)
             normal_angle = tangent_angle - math.pi/2
-            print('normal_angle',normal_angle)
+            #print('normal_angle',normal_angle)
             normals += [normal_angle]
             normal_distance = np.linalg.norm(sample-neighbor)
             normal_distances += [normal_distance]
@@ -125,8 +126,6 @@ class ScanNormalTSDFRangeInserter:
         ax = fig.add_subplot(111)
         x_val = [x[0] for x in hits]
         y_val = [x[1] for x in hits]
-        print('a',normal_weights)
-        print('b',np.random.rand(len(x_val)))
         ax.scatter(x_val, y_val, c=normal_weights, marker='x', cmap=cm.jet)
         ax.scatter(sensor_origin[0], sensor_origin[1], marker='x')
         for idx, normal_orientation in enumerate(normal_orientations):  
@@ -135,7 +134,7 @@ class ScanNormalTSDFRangeInserter:
             dy = -normal_scale*np.cos(normal_orientation)        
             ax.arrow(x_val[idx], y_val[idx], dx, dy, fc='k', ec='k', color='b')
             ax.set_aspect('equal')
-        plt.show()
+        #plt.show()
         
     def computeNormalBasedWeight(normal_orientation, normal_score, ray_orientation):
         pass
@@ -148,7 +147,9 @@ class ScanNormalTSDFRangeInserter:
         normal_orientations = []
         normal_orientation_variances = []
         normal_estimation_weight_sums = []
-        for idx, hit in enumerate(hits):            
+        for idx, hit in enumerate(hits):      
+            #print('origin',origin)       
+            #print('hit',hit)      
             neighbor_indices = np.array(list(range(idx-int(np.floor(self.n_normal_samples/2)), idx)) + list(range(idx+1, idx+int(np.ceil(self.n_normal_samples/2) + 1))))
             neighbor_indices = neighbor_indices[neighbor_indices >= 0]
             neighbor_indices = neighbor_indices[neighbor_indices < n_hits]
@@ -157,22 +158,29 @@ class ScanNormalTSDFRangeInserter:
             normal_estimation_weight_sums += [normal_estimation_weight_sum]
             normal_orientation_variances += [normal_var]
             hit = np.array(hit)
-            grid_index, grid_step, t_max, t_delta = getRaytracingHelperVariables(origin, hit, 0., 1.1, 1. / tsdf.resolution)
-            t = 0
             ray = hit - origin
+            if(min(abs(ray))/tsdf.resolution < 0.5):
+                #TODO handle perpendicular case
+                continue
+            
             ray_range = np.linalg.norm(ray)        
             range_inv = 1.0 / ray_range
             t_truncation_distance = tsdf.truncation_distance * range_inv
             t_start = 0.0
-            t_end = 1.0 + t_truncation_distance
-            while t < t_end :
+            t_end = 1.0
+            grid_index, grid_step, t_max, t_delta = getRaytracingHelperVariables(origin, ray, t_start,t_end, 1. / tsdf.resolution)
+            t = 0
+            while t < 1.0 + t_truncation_distance :                
+                #print('t',t,'t_max',t_max,'t_delta',t_delta)
                 t_next = np.min(t_max)
                 min_coeff_idx = np.argmin(t_max)
-                sampling_point = origin + t * ray
+                sampling_point = origin + (t + t_next)/2 * ray
+                #print('sampling_point',sampling_point,'t',origin + (t) * ray,'tn',origin + (t_next) * ray)
                 cell_index = tsdf.getCellIndexAtPosition(sampling_point)
                 cell_center = tsdf.getPositionAtCellIndex(cell_index)
                 distance = np.linalg.norm(cell_center - origin)
-                self.updateCell(tsdf, cell_index, ray_range - distance, ray_range, 1)
+                self.updateCell(tsdf, cell_index, ray_range - distance, ray_range, 1)                
+                #print('cell_index', cell_index)      
                 t = t_next
                 t_max[min_coeff_idx] += t_delta[min_coeff_idx]
-        self.drawScanWithNormals(hits, normal_orientations, origin, normal_estimation_weight_sums)
+        #self.drawScanWithNormals(hits, normal_orientations, origin, normal_estimation_weight_sums)

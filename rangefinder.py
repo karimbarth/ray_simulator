@@ -7,12 +7,12 @@ from shapely.geometry import LineString
 
 class Rangefinder:    
     def __init__(self):
-        self.angular_resultion = 0.08
-        self.min_angle = -1.5
-        self.max_angle = 1.5
+        self.angular_resultion = 0.1
+        self.min_angle = -1.6
+        self.max_angle = 1.6
         self.max_range = 10
-        self.range_variance = 0.03
-        self.angular_variance = 0.0
+        self.range_variance = 0.0
+        self.angular_variance = 0.01
         np.random.seed(42)
         
     def scan(self, environment, origin):

@@ -18,7 +18,29 @@ class TSDF:
         return np.array((cell_index[1][0], cell_index[0][0])) * self.resolution
     
     def setTSDF(self, position_index, value):
-        self.tsdf[position_index] = value;
+        try:
+            self.tsdf[position_index] = value
+        except:
+            pass
         
     def setWeight(self, position_index, value):
-        self.weights[position_index] = value;
+        try:
+            self.weights[position_index] = value
+        except:
+            pass
+    
+    def getTSDF(self, position_index):
+        try:
+            return self.tsdf[position_index]
+        except:
+            return math.nan
+        
+    def getWeight(self, position_index):
+        try:
+            return self.weights[position_index]
+        except:
+            return math.nan
+        
+    def resetWeights(self):
+        n_cells_per_dimension = int(self.size/self.resolution + 1)
+        self.weights = np.zeros((n_cells_per_dimension, n_cells_per_dimension))
