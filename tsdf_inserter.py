@@ -20,7 +20,7 @@ def getRaytracingHelperVariables(observation_origin, observation_ray,t_start, t_
     grid_index = np.round(traversal_start_scaled)
     grid_step = np.sign(traversal_ray_scaled)
     #adjustment = (grid_step > 0).astype(float)
-    grid_index_adjusted = grid_index + grid_step    
+    grid_index_adjusted = grid_index + 0.5*grid_step    
     t_max = (grid_index_adjusted - traversal_start_scaled) * traversal_ray_scaled_inv
     t_delta = grid_step * traversal_ray_scaled_inv
     return grid_index, grid_step, t_max, t_delta
@@ -99,6 +99,8 @@ class ScanNormalTSDFRangeInserter:
             updated_tsdf = (tsdf.getTSDF(cell_index) * tsdf.getWeight(cell_index) + update_distance * update_weight) / (update_weight + tsdf.getWeight(cell_index))   
             tsdf.setWeight(cell_index, updated_weight)
             tsdf.setTSDF(cell_index, updated_tsdf)
+        #tsdf.setWeight(cell_index, 0.5)
+        #tsdf.setTSDF(cell_index, 0.5)
     
     
     def computeNormal(self, sample, neighbors):
@@ -164,11 +166,11 @@ class ScanNormalTSDFRangeInserter:
             ray_range = np.linalg.norm(ray)        
             range_inv = 1.0 / ray_range
             t_truncation_distance = tsdf.truncation_distance * range_inv
-            t_start = 0.0
-            t_end = 1.0
+            t_start = 1.0 - t_truncation_distance
+            t_end = 1.0 + t_truncation_distance
             grid_index, grid_step, t_max, t_delta = getRaytracingHelperVariables(origin, ray, t_start,t_end, 1. / tsdf.resolution)
             t = 0
-            while t < 1.0 + t_truncation_distance :                
+            while t < 1.0 :                
                 #print('t',t,'t_max',t_max,'t_delta',t_delta)     
                 #print('grid_index',grid_index)
                 t_next = np.min(t_max)
