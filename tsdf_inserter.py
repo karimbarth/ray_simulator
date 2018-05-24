@@ -54,18 +54,19 @@ def gaussian(x, mu=0, sigma=1):
 
 class ScanNormalTSDFRangeInserter:   
     
-    def __init__(self, use_normals_weight=False, n_normal_samples=8, default_weight=1, use_distance_cell_to_observation_weight=False, use_distance_cell_to_ray_weight=False, normal_distance_factor=1, max_weight=1000, draw_normals_scan_indices=[10]):
+    def __init__(self, use_normals_weight=False, n_normal_samples=8, default_weight=1, use_distance_cell_to_observation_weight=False, use_distance_cell_to_ray_weight=False, use_scale_distance=False, normal_distance_factor=1, max_weight=1000, draw_normals_scan_indices=[10]):
         self.use_normals_weight = use_normals_weight
         self.use_distance_cell_to_observation_weight = use_distance_cell_to_observation_weight
-        self.sigma_distance_cell_to_observation_weight = 0.5
+        self.sigma_distance_cell_to_observation_weight = 0.7
         self.use_distance_cell_to_ray_weight = use_distance_cell_to_ray_weight
-        self.sigma_distance_cell_to_ray_weight = 0.5
+        self.sigma_distance_cell_to_ray_weight = 0.4
         self.n_normal_samples = n_normal_samples
         self.default_weight = default_weight
         self.normal_distance_factor = normal_distance_factor #0 --> all normals same weight, 1 --> f(0)=1, f(0.1)=0.9 f(0.2)=0.82 independent of distance, inf -->only closest normal counts
         self.max_weight = max_weight
         self.draw_normals_scan_indices = draw_normals_scan_indices
         self.num_inserted_scans = 0
+        self.use_scale_distance = use_scale_distance
         print(self)
         
     def __str__(self):
@@ -179,13 +180,14 @@ class ScanNormalTSDFRangeInserter:
         normal_estimation_weight_sums = []
         normal_estimation_angles_to_ray = []
         normal_estimation_angle_to_ray = 0
+        normal_orientation = 0
         for idx, hit in enumerate(hits):      
             #print('origin',origin)       
             #print('hit',hit)      
             hit = np.array(hit)
             ray = hit - origin    
             
-            if self.use_normals_weight:
+            if self.use_normals_weight or True:
                 neighbor_indices = np.array(list(range(idx-int(np.floor(self.n_normal_samples/2)), idx)) + list(range(idx+1, idx+int(np.ceil(self.n_normal_samples/2) + 1))))
                 neighbor_indices = neighbor_indices[neighbor_indices >= 0]
                 neighbor_indices = neighbor_indices[neighbor_indices < n_hits]
@@ -214,6 +216,7 @@ class ScanNormalTSDFRangeInserter:
                 cell_center = tsdf.getPositionAtCellIndex(cell_index)
                 distance_cell_center_to_origin = np.linalg.norm(cell_center - origin)
                 update_weight = 1
+                update_distance = ray_range - distance_cell_center_to_origin
                 #use_distance_cell_to_observation_weight
                 if self.use_normals_weight:
                     update_weight = np.cos(normal_estimation_angle_to_ray)
@@ -223,14 +226,17 @@ class ScanNormalTSDFRangeInserter:
                     distance_cell_to_observation_weight = (tsdf.truncation_distance - np.abs(ray_range - distance_cell_center_to_origin))/tsdf.truncation_distance
                     update_weight *= distance_cell_to_observation_weight
                 if self.use_distance_cell_to_ray_weight:
-                    distance_cell_to_ray = distanceLinePoint(origin, hit, cell_center)
-                    distance_cell_to_ray_weight = distance_cell_to_ray/tsdf.resolution
-                    distance_cell_to_ray_weight = gaussian(distance_cell_to_ray/tsdf.resolution, 0, self.sigma_distance_cell_to_ray_weight)
-                    
+                    distance_cell_to_ray = distanceLinePoint(origin, hit, cell_center)/tsdf.resolution
+                    #distance_cell_to_ray_weight = distance_cell_to_ray
+                    distance_cell_to_ray_weight = gaussian(distance_cell_to_ray, 0, self.sigma_distance_cell_to_ray_weight)                    
                     update_weight *= distance_cell_to_ray_weight
+                
+                if self.use_scale_distance:
+                    #print(np.array([np.cos(normal_orientation), np.sin(normal_orientation)]))
+                    update_distance = (cell_center - hit).dot(np.array([np.cos(normal_orientation), np.sin(normal_orientation)]))
                     
                 
-                self.updateCell(tsdf, cell_index, ray_range - distance_cell_center_to_origin, ray_range, update_weight)
+                self.updateCell(tsdf, cell_index, update_distance , ray_range, update_weight)
                 #print('cell_index', cell_index)      
                 t = t_next
                 grid_index[min_coeff_idx] += grid_step[min_coeff_idx]

@@ -8,11 +8,11 @@ import math
 
 class Rangefinder:    
     def __init__(self):
-        self.angular_resultion = 0.05
+        self.angular_resultion = 0.025
         self.min_angle = -math.pi/2
         self.max_angle = math.pi/2
         self.max_range = 10
-        self.range_variance = 0.0
+        self.range_variance = 0.012
         self.angular_variance = 0.0
         np.random.seed(43)
         

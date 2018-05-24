@@ -11,7 +11,7 @@ from tsdf_inserter import ScanNormalTSDFRangeInserter
 from tsdf import TSDF
 
 def generateEnvironment():
-    obstacle = LineString([(1, 1.8), (9, 1.2)])
+    obstacle = LineString([(1, 1.7), (9, 2.3)])
     #x, y = obstacle.xy
     #ax.plot(x, y, color='black',  linewidth=1)
     return obstacle
@@ -39,6 +39,13 @@ def plotTSDFWithScan(tsdf, hits, sensor_origin, environment, caption):
     plt.ylim(0.5,2.5)
     plt.title('TSDF Weights')
     plt.colorbar()
+    
+    '''
+    ax.plot(environment_x, environment_y, color='black',  linewidth=1)    
+    for hit in hits:
+        hit_ray = np.transpose(np.array([hit, sensor_origin]))
+        ax.plot(hit_ray[0], hit_ray[1], color='black',  linewidth=1)
+    '''   
     
     ax = plt.subplot(313)
     extent = -tsdf.resolution/2.0, tsdf.size+tsdf.resolution/2.0, -tsdf.resolution/2.0, tsdf.size+tsdf.resolution/2.0
@@ -124,12 +131,12 @@ def singleRay(range_inserter, environment, title_trunk='Default'):
     tsdfs = []
     hits = None
     sensor_origin = None
-    for x in range(22,25,1):
+    for x in range(2,23,1):
         sensor_origin = (x/5.0,1.0)    
         hits = rangefinder.scan(environment, sensor_origin)  
         range_inserter.insertScan(tsdf, hits, sensor_origin)   
-        if x==100:
-            plotTSDFWithScan(tsdf, hits, sensor_origin, environment, title_trunk + ' TSDF')
+        #if x==100:
+        #    plotTSDFWithScan(tsdf, hits, sensor_origin, environment, title_trunk + ' TSDF')
             #tsdfs += [copy.deepcopy(tsdf)]
             
     plotTSDFWithScan(tsdf, hits, sensor_origin, environment, title_trunk + ' TSDF')
@@ -140,6 +147,7 @@ if __name__ == '__main__':
     environment = generateEnvironment()
     tsdfs = []
     tsdf_identifiers = []
+    
     default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=False);
     tsdf_default = singleRay(default_inserter, environment)
     tsdfs += [tsdf_default]
@@ -148,20 +156,34 @@ if __name__ == '__main__':
     default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=True, n_normal_samples=8);
     tsdf_weights = singleRay(default_inserter, environment, 'Weight=cos(alpha) ')
     tsdfs += [tsdf_weights]
-    tsdf_identifiers += ['angle']
+    tsdf_identifiers += ['angle']    
+    
+    default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=False, n_normal_samples=8, use_distance_cell_to_observation_weight=True, use_distance_cell_to_ray_weight=False);
+    tsdfs += [singleRay(default_inserter, environment, 'Weight=distance1 ')]
+    tsdf_identifiers += ['dist1']       
+    
+    default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=False, n_normal_samples=8, use_distance_cell_to_observation_weight=False, use_distance_cell_to_ray_weight=True);
+    tsdfs += [singleRay(default_inserter, environment, 'Weight=distance2 ')]
+    tsdf_identifiers += ['dist2']    
     
     default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=True, n_normal_samples=8, use_distance_cell_to_observation_weight=True);
     tsdf_weights_distance_scaled = singleRay(default_inserter, environment, 'Weight=cos(alpha)*distance ')
     tsdfs += [tsdf_weights_distance_scaled]
-    tsdf_identifiers += ['angle*dist1']
+    tsdf_identifiers += ['angle*dist1']    
     
-    default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=True, n_normal_samples=8, use_distance_cell_to_observation_weight=True, use_distance_cell_to_ray_weight=True);
-    tsdfs += [singleRay(default_inserter, environment, 'Weight=cos(alpha)*distance1*distance2 ')]
-    tsdf_identifiers += ['angle*dist1*dist2']
+    default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=False, n_normal_samples=8, use_scale_distance=True, use_distance_cell_to_ray_weight=False);
+    tsdfs += [singleRay(default_inserter, environment, 'Weight=cost scale_dist=true ')]
+    tsdf_identifiers += ['const + scale dist']    
     
-    default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=False, n_normal_samples=8, use_distance_cell_to_observation_weight=False, use_distance_cell_to_ray_weight=True);
-    tsdfs += [singleRay(default_inserter, environment, 'Weight=distance2 ')]
-    tsdf_identifiers += ['dist2']
+    default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=True, n_normal_samples=8, use_distance_cell_to_observation_weight=True, use_distance_cell_to_ray_weight=False,  use_scale_distance=True);
+    tsdfs += [singleRay(default_inserter, environment, 'Weight=cos(alpha)*distance1 + scale_dist ')]
+    tsdf_identifiers += ['angle*dist1 + scale_dist']
+    
+    default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=True, n_normal_samples=8, use_distance_cell_to_observation_weight=True, use_distance_cell_to_ray_weight=True,  use_scale_distance=True);
+    tsdfs += [singleRay(default_inserter, environment, 'Weight=cos(alpha)*distance1*distance2  + scale_dist  ')]
+    tsdf_identifiers += ['angle*dist1*dist2 + scale_dist']
+
+    
     
     plotTSDFErrorDeltasMatrix(tsdfs, tsdf_identifiers, environment)
     plt.show()
