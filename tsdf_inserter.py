@@ -43,13 +43,18 @@ def angle_between(v1, v2):
 def angle(v):
     v_normalized = unit_vector(v)
     return math.atan2(v_normalized[1], v_normalized[0])    
-                         
+  
+def distanceLinePoint(line_p0, line_p1, point):
+    numerator = np.abs((line_p1[1]-line_p0[1])*point[0] - (line_p1[0]-line_p0[0])*point[1] + line_p1[0]*line_p0[1] - line_p1[1]*line_p0[0]) 
+    denominator = np.linalg.norm(line_p1-line_p0)
+    return numerator/denominator  
 
 class ScanNormalTSDFRangeInserter:   
     
-    def __init__(self, use_normals_weight=False, n_normal_samples=8, default_weight=1, scale_weight_by_distance=False, normal_distance_factor=1, max_weight=1000, draw_normals_scan_indices=[10]):
+    def __init__(self, use_normals_weight=False, n_normal_samples=8, default_weight=1, use_distance_cell_to_observation_weight=False, use_distance_cell_to_ray_weight=False, normal_distance_factor=1, max_weight=1000, draw_normals_scan_indices=[10]):
         self.use_normals_weight = use_normals_weight
-        self.scale_weight_by_distance = scale_weight_by_distance
+        self.use_distance_cell_to_observation_weight = use_distance_cell_to_observation_weight
+        self.use_distance_cell_to_ray_weight = use_distance_cell_to_ray_weight
         self.n_normal_samples = n_normal_samples
         self.default_weight = default_weight
         self.normal_distance_factor = normal_distance_factor #0 --> all normals same weight, 1 --> f(0)=1, f(0.1)=0.9 f(0.2)=0.82 independent of distance, inf -->only closest normal counts
@@ -159,11 +164,6 @@ class ScanNormalTSDFRangeInserter:
             ax.set_aspect('equal')
         plt.title('Combined weight')
         
-        
-                
-    def computeNormalBasedWeight(normal_orientation, normal_score, ray_orientation):
-        pass
-        
     
     def insertScan(self, tsdf, hits, origin):
         origin = np.array(origin)
@@ -207,16 +207,21 @@ class ScanNormalTSDFRangeInserter:
                 #print('sampling_point',sampling_point,'t',origin + (t) * ray,'tn',origin + (t_next) * ray)
                 cell_index = tsdf.getCellIndexAtPosition(sampling_point)
                 cell_center = tsdf.getPositionAtCellIndex(cell_index)
-                distance = np.linalg.norm(cell_center - origin)
+                distance_cell_center_to_origin = np.linalg.norm(cell_center - origin)
                 update_weight = 1
-                #scale_weight_by_distance
+                #use_distance_cell_to_observation_weight
                 if self.use_normals_weight:
                     update_weight = np.cos(normal_estimation_angle_to_ray)
-                if self.scale_weight_by_distance:
-                    distance_weight = (tsdf.truncation_distance - np.abs(ray_range - distance))/tsdf.truncation_distance
-                    update_weight *= distance_weight
+                if self.use_distance_cell_to_observation_weight:
+                    distance_cell_to_observation_weight = (tsdf.truncation_distance - np.abs(ray_range - distance_cell_center_to_origin))/tsdf.truncation_distance
+                    update_weight *= distance_cell_to_observation_weight
+                if self.use_distance_cell_to_ray_weight:
+                    distance_cell_to_ray = distanceLinePoint(origin, hit, cell_center)
+                    distance_cell_to_ray_weight = distance_cell_to_ray/tsdf.resolution
+                    update_weight *= distance_cell_to_ray_weight
+                    
                 
-                self.updateCell(tsdf, cell_index, ray_range - distance, ray_range, update_weight)
+                self.updateCell(tsdf, cell_index, ray_range - distance_cell_center_to_origin, ray_range, update_weight)
                 #print('cell_index', cell_index)      
                 t = t_next
                 grid_index[min_coeff_idx] += grid_step[min_coeff_idx]
