@@ -11,17 +11,19 @@ from tsdf_inserter import ScanNormalTSDFRangeInserter
 from tsdf import TSDF
 
 def generateEnvironment():
-    obstacle = LineString([(1, 1.5), (9, 1.5)])
+    obstacle = LineString([(1, 7.5), (9, 1.5)])
     #x, y = obstacle.xy
     #ax.plot(x, y, color='black',  linewidth=1)
     return obstacle
 
 
-def plotTSDFWithScan(tsdf, hits, sensor_origin, environment):    
+def plotTSDFWithScan(tsdf, hits, sensor_origin, environment, caption):    
     fig = plt.figure()
     ax = plt.subplot(311)
     extent = -tsdf.resolution/2.0, tsdf.size+tsdf.resolution/2.0, -tsdf.resolution/2.0, tsdf.size+tsdf.resolution/2.0
     plt.imshow(tsdf.tsdf, interpolation='nearest',extent=extent, cmap= 'seismic', origin="lower",vmin = -1, vmax = 1)
+    plt.ylim(0.5,2.5)
+    plt.title('TSDF')
     plt.colorbar()
     
     environment_x, environment_y = environment.xy
@@ -34,6 +36,8 @@ def plotTSDFWithScan(tsdf, hits, sensor_origin, environment):
     ax = plt.subplot(312)
     extent = -tsdf.resolution/2.0, tsdf.size+tsdf.resolution/2.0, -tsdf.resolution/2.0, tsdf.size+tsdf.resolution/2.0
     plt.imshow(tsdf.weights, interpolation='nearest',extent=extent, cmap= 'jet', origin="lower")
+    plt.ylim(0.5,2.5)
+    plt.title('TSDF Weights')
     plt.colorbar()
     
     ax = plt.subplot(313)
@@ -50,6 +54,9 @@ def plotTSDFWithScan(tsdf, hits, sensor_origin, environment):
     tsdf_error[tsdf.weights > 0] = np.abs(tsdf_grund_truth[tsdf.weights > 0] - np.abs(tsdf.tsdf[tsdf.weights>0]))
     #tsdf_error = np.abs(tsdf_error - np.abs(tsdf.tsdf))
     plt.imshow(tsdf_error, interpolation='nearest',extent=extent, cmap= 'jet', origin="lower",vmin =0, vmax = 0.2)
+    plt.ylim(0.5,2.5)
+    plt.title('TSDF Error')
+    plt.suptitle(caption)
     plt.colorbar()
 
 def plotTSDFErrorDeltas(tsdfs, hits, sensor_origin, environment):    
@@ -71,26 +78,31 @@ def plotTSDFErrorDeltas(tsdfs, hits, sensor_origin, environment):
         tsdf_error_after = 0.*tsdfs[i+1].tsdf
         tsdf_error_after[tsdfs[i+1].weights > 0] = np.abs(tsdf_grund_truth[tsdfs[i+1].weights > 0] - np.abs(tsdfs[i+1].tsdf[tsdfs[i+1].weights>0]))
         plt.imshow(tsdf_error_after-tsdf_error_before, interpolation='nearest',extent=extent, cmap='seismic', origin="lower",vmin =-0.1, vmax = 0.1)
+        plt.ylim(0.5,2.5)
+        
         plt.colorbar()
         
 
-def singleRay(range_inserter):
+def singleRay(range_inserter, title_trunk='Default'):
     environment = generateEnvironment()
     rangefinder = Rangefinder()  
     tsdf = TSDF()
     
     tsdfs = []
-    
-    for x in range(1,10,1):
-        sensor_origin = (x,1)    
+    hits = None
+    sensor_origin = None
+    for x in range(1,10,2):
+        sensor_origin = (x,1.0)    
         hits = rangefinder.scan(environment, sensor_origin)  
         range_inserter.insertScan(tsdf, hits, sensor_origin)   
-        if x%2==0:
-            plotTSDFWithScan(tsdf, hits, sensor_origin, environment)
-            tsdfs += [copy.deepcopy(tsdf)]
+        #if x%79==0:
+            #plotTSDFWithScan(tsdf, hits, sensor_origin, environment)
+            #tsdfs += [copy.deepcopy(tsdf)]
+            
+    plotTSDFWithScan(tsdf, hits, sensor_origin, environment, title_trunk + ' TSDF')
     #plotTSDFErrorDeltas(tsdfs, hits, sensor_origin, environment)
     plt.show()
    
 if __name__ == '__main__':
-    default_inserter = ScanNormalTSDFRangeInserter();
+    default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=True, n_normal_samples=6);
     singleRay(default_inserter)
