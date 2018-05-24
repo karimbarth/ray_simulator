@@ -80,6 +80,31 @@ def plotTSDFErrorDeltas(tsdfs, environment):
         plt.imshow(tsdf_error_after-tsdf_error_before, interpolation='nearest',extent=extent, cmap='seismic', origin="lower",vmin =-0.1, vmax = 0.1)
         plt.ylim(0.5,2.5)        
         plt.colorbar()
+        
+
+def plotTSDFErrorDeltasMatrix(tsdfs, tsdf_identifiers, environment):    
+    n_tsdfs = len(tsdfs)
+    fig = plt.figure()
+    for i in range(0, n_tsdfs):
+        for j in range(0, n_tsdfs):
+            print(i, j, (i+1) + j*n_tsdfs)
+            ax = plt.subplot(n_tsdfs,n_tsdfs,(i+1) + j*n_tsdfs)
+            extent = -tsdfs[0].resolution / 2.0, tsdfs[0].size+tsdfs[0].resolution/2.0, -tsdfs[0].resolution/2.0, tsdfs[0].size+tsdfs[0].resolution / 2.0
+            tsdf_grund_truth = 0.*tsdfs[0].tsdf
+            it = np.nditer(tsdf_grund_truth, flags=['multi_index'], op_flags=['readwrite'])
+            while not it.finished:
+                idx = [[it.multi_index[0]],[it.multi_index[1]]]
+                point_position = tsdfs[i].getPositionAtCellIndex(idx)
+                distance = environment.distance(Point(point_position))
+                it[0] = min(distance, tsdfs[i].truncation_distance)
+                it.iternext()
+            tsdf_error_before = 0.*tsdfs[i].tsdf
+            tsdf_error_before[tsdfs[i].weights > 0] = np.abs(tsdf_grund_truth[tsdfs[i].weights > 0] - np.abs(tsdfs[i].tsdf[tsdfs[i].weights>0]))
+            tsdf_error_after = 0.*tsdfs[j].tsdf
+            tsdf_error_after[tsdfs[j].weights > 0] = np.abs(tsdf_grund_truth[tsdfs[j].weights > 0] - np.abs(tsdfs[j].tsdf[tsdfs[j].weights>0]))
+            plt.imshow(tsdf_error_after-tsdf_error_before, interpolation='nearest',extent=extent, cmap='seismic', origin="lower",vmin =-0.1, vmax = 0.1)
+            plt.ylim(0.5,2.5)        
+            plt.colorbar()
 
 
 def singleRay(range_inserter, environment, title_trunk='Default'):
@@ -104,11 +129,19 @@ def singleRay(range_inserter, environment, title_trunk='Default'):
 if __name__ == '__main__':    
     environment = generateEnvironment()
     tsdfs = []
+    tsdf_identifiers = []
     default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=False);
     tsdf_default = singleRay(default_inserter, environment)
     tsdfs += [tsdf_default]
+    tsdf_identifiers += ['w=1']
     default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=True, n_normal_samples=6);
     tsdf_weights = singleRay(default_inserter, environment, 'Weight=cos(alpha) ')
     tsdfs += [tsdf_weights]
-    plotTSDFErrorDeltas(tsdfs, environment)
+    tsdf_identifiers += ['w=cos(alpha)']
+    default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=True, n_normal_samples=6, scale_weight_by_distance=True);
+    tsdf_weights_distance_scaled = singleRay(default_inserter, environment, 'Weight=cos(alpha)*distance ')
+    tsdfs += [tsdf_weights_distance_scaled]
+    tsdf_identifiers += ['w=cos(alpha)*distance']
+    #plotTSDFErrorDeltas(tsdfs, environment)
+    plotTSDFErrorDeltasMatrix(tsdfs, tsdf_identifiers, environment)
     plt.show()

@@ -47,12 +47,15 @@ def angle(v):
 
 class ScanNormalTSDFRangeInserter:   
     
-    def __init__(self, use_normals_weight=False, n_normal_samples=8, default_weight=1, normal_distance_factor=1):
+    def __init__(self, use_normals_weight=False, n_normal_samples=8, default_weight=1, scale_weight_by_distance=False, normal_distance_factor=1, max_weight=1000, draw_normals_scan_indices=[10]):
         self.use_normals_weight = use_normals_weight
+        self.scale_weight_by_distance = scale_weight_by_distance
         self.n_normal_samples = n_normal_samples
         self.default_weight = default_weight
         self.normal_distance_factor = normal_distance_factor #0 --> all normals same weight, 1 --> f(0)=1, f(0.1)=0.9 f(0.2)=0.82 independent of distance, inf -->only closest normal counts
-        self.max_weight = 3000
+        self.max_weight = max_weight
+        self.draw_normals_scan_indices = draw_normals_scan_indices
+        self.num_inserted_scans = 0
         print(self)
         
     def __str__(self):
@@ -205,15 +208,23 @@ class ScanNormalTSDFRangeInserter:
                 cell_index = tsdf.getCellIndexAtPosition(sampling_point)
                 cell_center = tsdf.getPositionAtCellIndex(cell_index)
                 distance = np.linalg.norm(cell_center - origin)
+                update_weight = 1
+                #scale_weight_by_distance
                 if self.use_normals_weight:
-                    self.updateCell(tsdf, cell_index, ray_range - distance, ray_range, 3. * np.cos(normal_estimation_angle_to_ray))
-                else:
-                    self.updateCell(tsdf, cell_index, ray_range - distance, ray_range, 1)
+                    update_weight = np.cos(normal_estimation_angle_to_ray)
+                if self.scale_weight_by_distance:
+                    distance_weight = (tsdf.truncation_distance - np.abs(ray_range - distance))/tsdf.truncation_distance
+                    update_weight *= distance_weight
+                
+                self.updateCell(tsdf, cell_index, ray_range - distance, ray_range, update_weight)
                 #print('cell_index', cell_index)      
                 t = t_next
                 grid_index[min_coeff_idx] += grid_step[min_coeff_idx]
                 t_max[min_coeff_idx] += t_delta[min_coeff_idx]
         if self.use_normals_weight:
-            #self.drawScanWithNormals(hits, normal_orientations, origin, normal_estimation_weight_sums, normal_orientation_variances, #normal_estimation_angles_to_ray)
-            #print('avg normal error', np.mean(np.abs(normal_orientations)))
-            pass
+            if  self.num_inserted_scans in self.draw_normals_scan_indices :
+                self.drawScanWithNormals(hits, normal_orientations, origin, normal_estimation_weight_sums, normal_orientation_variances, normal_estimation_angles_to_ray)
+                self.draw_normals = False
+                #print('avg normal error', np.mean(np.abs(normal_orientations)))
+                pass
+        self.num_inserted_scans += 1
