@@ -49,12 +49,17 @@ def distanceLinePoint(line_p0, line_p1, point):
     denominator = np.linalg.norm(line_p1-line_p0)
     return numerator/denominator  
 
+def gaussian(x, mu=0, sigma=1):
+    return 1/(math.sqrt(2*math.pi)*sigma**2)*math.e**(-0.5*((x-mu)/sigma**2)**2)
+
 class ScanNormalTSDFRangeInserter:   
     
     def __init__(self, use_normals_weight=False, n_normal_samples=8, default_weight=1, use_distance_cell_to_observation_weight=False, use_distance_cell_to_ray_weight=False, normal_distance_factor=1, max_weight=1000, draw_normals_scan_indices=[10]):
         self.use_normals_weight = use_normals_weight
         self.use_distance_cell_to_observation_weight = use_distance_cell_to_observation_weight
+        self.sigma_distance_cell_to_observation_weight = 0.5
         self.use_distance_cell_to_ray_weight = use_distance_cell_to_ray_weight
+        self.sigma_distance_cell_to_ray_weight = 0.5
         self.n_normal_samples = n_normal_samples
         self.default_weight = default_weight
         self.normal_distance_factor = normal_distance_factor #0 --> all normals same weight, 1 --> f(0)=1, f(0.1)=0.9 f(0.2)=0.82 independent of distance, inf -->only closest normal counts
@@ -213,11 +218,15 @@ class ScanNormalTSDFRangeInserter:
                 if self.use_normals_weight:
                     update_weight = np.cos(normal_estimation_angle_to_ray)
                 if self.use_distance_cell_to_observation_weight:
+                    normalized_distance_cell_to_observation = np.abs(ray_range - distance_cell_center_to_origin)/tsdf.resolution
+                    distance_cell_to_observation_weight = gaussian(normalized_distance_cell_to_observation, 0, self.sigma_distance_cell_to_observation_weight)                    
                     distance_cell_to_observation_weight = (tsdf.truncation_distance - np.abs(ray_range - distance_cell_center_to_origin))/tsdf.truncation_distance
                     update_weight *= distance_cell_to_observation_weight
                 if self.use_distance_cell_to_ray_weight:
                     distance_cell_to_ray = distanceLinePoint(origin, hit, cell_center)
                     distance_cell_to_ray_weight = distance_cell_to_ray/tsdf.resolution
+                    distance_cell_to_ray_weight = gaussian(distance_cell_to_ray/tsdf.resolution, 0, self.sigma_distance_cell_to_ray_weight)
+                    
                     update_weight *= distance_cell_to_ray_weight
                     
                 

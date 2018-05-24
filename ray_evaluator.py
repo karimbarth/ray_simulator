@@ -158,10 +158,10 @@ if __name__ == '__main__':
     default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=True, n_normal_samples=8, use_distance_cell_to_observation_weight=True, use_distance_cell_to_ray_weight=True);
     tsdfs += [singleRay(default_inserter, environment, 'Weight=cos(alpha)*distance1*distance2 ')]
     tsdf_identifiers += ['angle*dist1*dist2']
-    plotTSDFErrorDeltasMatrix(tsdfs, tsdf_identifiers, environment)
     
     default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=False, n_normal_samples=8, use_distance_cell_to_observation_weight=False, use_distance_cell_to_ray_weight=True);
     tsdfs += [singleRay(default_inserter, environment, 'Weight=distance2 ')]
     tsdf_identifiers += ['dist2']
+    
     plotTSDFErrorDeltasMatrix(tsdfs, tsdf_identifiers, environment)
     plt.show()
