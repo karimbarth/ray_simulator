@@ -59,7 +59,7 @@ class ScanNormalTSDFRangeInserter:
         self.use_distance_cell_to_observation_weight = use_distance_cell_to_observation_weight
         self.sigma_distance_cell_to_observation_weight = 0.7
         self.use_distance_cell_to_ray_weight = use_distance_cell_to_ray_weight
-        self.sigma_distance_cell_to_ray_weight = 0.4
+        self.sigma_distance_cell_to_ray_weight = 0.8
         self.n_normal_samples = n_normal_samples
         self.default_weight = default_weight
         self.normal_distance_factor = normal_distance_factor #0 --> all normals same weight, 1 --> f(0)=1, f(0.1)=0.9 f(0.2)=0.82 independent of distance, inf -->only closest normal counts
