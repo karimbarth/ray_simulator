@@ -11,7 +11,7 @@ from tsdf_inserter import ScanNormalTSDFRangeInserter
 from tsdf import TSDF
 
 def generateEnvironment():
-    obstacle = LineString([(1, 7.5), (9, 1.5)])
+    obstacle = LineString([(1, 1.8), (9, 1.2)])
     #x, y = obstacle.xy
     #ax.plot(x, y, color='black',  linewidth=1)
     return obstacle
@@ -53,13 +53,13 @@ def plotTSDFWithScan(tsdf, hits, sensor_origin, environment, caption):
     tsdf_error = 0.*tsdf.tsdf
     tsdf_error[tsdf.weights > 0] = np.abs(tsdf_grund_truth[tsdf.weights > 0] - np.abs(tsdf.tsdf[tsdf.weights>0]))
     #tsdf_error = np.abs(tsdf_error - np.abs(tsdf.tsdf))
-    plt.imshow(tsdf_error, interpolation='nearest',extent=extent, cmap= 'jet', origin="lower",vmin =0, vmax = 0.2)
+    plt.imshow(tsdf_error, interpolation='nearest',extent=extent, cmap= 'jet', origin="lower",vmin =0, vmax = 0.1)
     plt.ylim(0.5,2.5)
     plt.title('TSDF Error')
     plt.suptitle(caption)
     plt.colorbar()
 
-def plotTSDFErrorDeltas(tsdfs, hits, sensor_origin, environment):    
+def plotTSDFErrorDeltas(tsdfs, environment):    
     n_tsdfs = len(tsdfs)
     for i in range(0, n_tsdfs-1):
         fig = plt.figure()
@@ -78,31 +78,37 @@ def plotTSDFErrorDeltas(tsdfs, hits, sensor_origin, environment):
         tsdf_error_after = 0.*tsdfs[i+1].tsdf
         tsdf_error_after[tsdfs[i+1].weights > 0] = np.abs(tsdf_grund_truth[tsdfs[i+1].weights > 0] - np.abs(tsdfs[i+1].tsdf[tsdfs[i+1].weights>0]))
         plt.imshow(tsdf_error_after-tsdf_error_before, interpolation='nearest',extent=extent, cmap='seismic', origin="lower",vmin =-0.1, vmax = 0.1)
-        plt.ylim(0.5,2.5)
-        
+        plt.ylim(0.5,2.5)        
         plt.colorbar()
-        
 
-def singleRay(range_inserter, title_trunk='Default'):
-    environment = generateEnvironment()
+
+def singleRay(range_inserter, environment, title_trunk='Default'):
     rangefinder = Rangefinder()  
     tsdf = TSDF()
     
     tsdfs = []
     hits = None
     sensor_origin = None
-    for x in range(1,10,2):
-        sensor_origin = (x,1.0)    
+    for x in range(1,46,2):
+        sensor_origin = (x/5.0,1.0)    
         hits = rangefinder.scan(environment, sensor_origin)  
         range_inserter.insertScan(tsdf, hits, sensor_origin)   
-        #if x%79==0:
-            #plotTSDFWithScan(tsdf, hits, sensor_origin, environment)
+        if x==23:
+            plotTSDFWithScan(tsdf, hits, sensor_origin, environment, title_trunk + ' TSDF')
             #tsdfs += [copy.deepcopy(tsdf)]
             
     plotTSDFWithScan(tsdf, hits, sensor_origin, environment, title_trunk + ' TSDF')
     #plotTSDFErrorDeltas(tsdfs, hits, sensor_origin, environment)
-    plt.show()
+    return tsdf
    
-if __name__ == '__main__':
+if __name__ == '__main__':    
+    environment = generateEnvironment()
+    tsdfs = []
+    default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=False);
+    tsdf_default = singleRay(default_inserter, environment)
+    tsdfs += [tsdf_default]
     default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=True, n_normal_samples=6);
-    singleRay(default_inserter)
+    tsdf_weights = singleRay(default_inserter, environment, 'Weight=cos(alpha) ')
+    tsdfs += [tsdf_weights]
+    plotTSDFErrorDeltas(tsdfs, environment)
+    plt.show()

@@ -8,7 +8,7 @@ import math
 
 class Rangefinder:    
     def __init__(self):
-        self.angular_resultion = 0.06
+        self.angular_resultion = 0.02
         self.min_angle = -math.pi/2
         self.max_angle = math.pi/2
         self.max_range = 10

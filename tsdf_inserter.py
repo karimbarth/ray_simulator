@@ -24,75 +24,25 @@ def getRaytracingHelperVariables(observation_origin, observation_ray,t_start, t_
     t_max = (grid_index_adjusted - traversal_start_scaled) * traversal_ray_scaled_inv
     t_delta = grid_step * traversal_ray_scaled_inv
     return grid_index, grid_step, t_max, t_delta
-'''
-class DefaultTSDFRangeInserter:   
-    
-    def __init__(self):
-        self.update_weight = 1
-        
-    def updateCell(self, tsdf, cell_index, update_distance, ray_length):       
-        if(abs(update_distance)< tsdf.truncation_distance):
-            updated_weight = tsdf.getWeight(cell_index) + self.update_weight
-            updated_tsdf = (tsdf.getTSDF(cell_index) * tsdf.getWeight(cell_index) + update_distance * self.update_weight) / updated_weight    
-            tsdf.setWeight(cell_index, updated_weight)
-            tsdf.setTSDF(cell_index, updated_tsdf)
-        
-    def insertScan(self, tsdf, hits, origin):
-        origin = np.array(origin)
-        for hit in hits:
-            hit = np.array(hit)
-            grid_index, grid_step, t_max, t_delta = getRaytracingHelperVariables(origin, hit-origin, 0., 1.1, 1. / tsdf.resolution)
-            t = 0
-            ray = hit - origin
-            ray_range = np.linalg.norm(ray)        
-            range_inv = 1.0 / ray_range
-            t_truncation_distance = tsdf.truncation_distance * range_inv
-            t_start = 0.0
-            t_end = 1.0 + t_truncation_distance
-            while t < t_end :
-                t_next = np.min(t_max)
-                min_coeff_idx = np.argmin(t_max)
-                sampling_point = origin + (t + t_next)/2 * ray
-                cell_index = tsdf.getCellIndexAtPosition(sampling_point)
-                cell_center = tsdf.getPositionAtCellIndex(cell_index)
-                distance = np.linalg.norm(cell_center - origin)
-                self.updateCell(tsdf, cell_index, ray_range - distance, ray_range)
-                t = t_next
-                t_max[min_coeff_idx] += t_delta[min_coeff_idx]
-'''
-#from  https://stackoverflow.com/questions/2827393/angles-between-two-n-dimensional-vectors-in-python   
+
 def unit_vector(vector):
-    """ Returns the unit vector of the vector.  """
     return vector / np.linalg.norm(vector)
 
-def angle_between(v1, v2):
-    """ Returns the angle in radians between vectors 'v1' and 'v2'::
+def toTwoPi(value):
+    if(value > math.pi):
+        return toTwoPi(value - 2 * math.pi) #value % math.pi
+    if(value < - math.pi):
+        return toTwoPi(value + 2 * math.pi) #value % -math.pi
+    return value
 
-            >>> angle_between((1, 0, 0), (0, 1, 0))
-            1.5707963267948966
-            >>> angle_between((1, 0, 0), (1, 0, 0))
-            0.0
-            >>> angle_between((1, 0, 0), (-1, 0, 0))
-            3.141592653589793
-    """
-    v1_u = unit_vector(v1)
-    v2_u = unit_vector(v2)
-    return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
+def angle_between(v1, v2):
+    v1_normalized = unit_vector(v1)
+    v2_normalized = unit_vector(v2)
+    return toTwoPi(angle(v1)-angle(v2))
 
 def angle(v):
-    if(v.dot(np.array([1,0])) > 0):
-        return angle_between(v, np.array([0,1]))
-    else:
-        return angle_between(v, np.array([0,-1]))
-    '''
-    print('angle_between((1, 0), (0, 1))', angle_between((1, 0), (0, 1)))
-    print('angle_between((-1, 0), (0, 1))', angle_between((-1, 0), (0, 1)))
-    print('angle_between((1, 1), (0, 1))', angle_between((1, 1), (0, 1)))
-    print('angle_between((-1, 1), (0, 1))', angle_between((-1, 1), (0, 1)))
-    print('angle_between((1, 10), (0, 1))', angle_between((1, 10), (0, 1)))
-    print('angle_between((-1, 10), (0, 1))', angle_between((-1, 10), (0, 1)))
-    print(angle_between(v, np.array([0,1])))
-    '''
+    v_normalized = unit_vector(v)
+    return math.atan2(v_normalized[1], v_normalized[0])    
                          
 
 class ScanNormalTSDFRangeInserter:   
@@ -102,6 +52,7 @@ class ScanNormalTSDFRangeInserter:
         self.n_normal_samples = n_normal_samples
         self.default_weight = default_weight
         self.normal_distance_factor = normal_distance_factor #0 --> all normals same weight, 1 --> f(0)=1, f(0.1)=0.9 f(0.2)=0.82 independent of distance, inf -->only closest normal counts
+        self.max_weight = 3000
         print(self)
         
     def __str__(self):
@@ -110,28 +61,28 @@ class ScanNormalTSDFRangeInserter:
         
     def updateCell(self, tsdf, cell_index, update_distance, ray_length, update_weight):       
         if(abs(update_distance)< tsdf.truncation_distance):
-            updated_weight = min(tsdf.getWeight(cell_index) + update_weight,100)
+            updated_weight = min(tsdf.getWeight(cell_index) + update_weight, self.max_weight)
             updated_tsdf = (tsdf.getTSDF(cell_index) * tsdf.getWeight(cell_index) + update_distance * update_weight) / (update_weight + tsdf.getWeight(cell_index))   
             tsdf.setWeight(cell_index, updated_weight)
             tsdf.setTSDF(cell_index, updated_tsdf)
         #tsdf.setWeight(cell_index, 0.5)
-        #tsdf.setTSDF(cell_index, 0.5)
-    
-    def toTwoPi(self, value):
-        if(value > math.pi):
-            return toTwoPi(value - 2*math.pi) #value % math.pi
-        if(value < -math.pi):
-            return toTwoPi(value + 2*math.pi) #value % -math.pi
-        return value
+        #tsdf.setTSDF(cell_index, 0.5)  
+
     
     def computeNormal(self, sample, neighbors):
         normals = []
         normal_distances = []
         normal_weights = []
         for neighbor in neighbors:
-            tangent_angle = angle(sample-neighbor)
+            delta_sample = sample-neighbor
+            if(delta_sample[0] < 0):
+                delta_sample = -delta_sample
+            
+            tangent_angle = angle(delta_sample)
+            if(np.abs(tangent_angle) > math.pi/2):
+                print('tangent out of interval', tangent_angle)
             #print('tangent', tangent_angle)
-            normal_angle = self.toTwoPi(tangent_angle - math.pi/2)
+            normal_angle = tangent_angle - math.pi/2
             #print('normal_angle',normal_angle)
             normals += [normal_angle]
             normal_distance = np.linalg.norm(sample-neighbor)
@@ -155,8 +106,8 @@ class ScanNormalTSDFRangeInserter:
         ax.scatter(sensor_origin[0], sensor_origin[1], marker='x')
         for idx, normal_orientation in enumerate(normal_orientations):  
             normal_scale = 0.1
-            dx = -normal_scale*np.sin(normal_orientation)
-            dy = -normal_scale*np.cos(normal_orientation)        
+            dx = normal_scale*np.cos(normal_orientation)
+            dy = normal_scale*np.sin(normal_orientation)        
             ax.arrow(x_val[idx], y_val[idx], dx, dy, fc='k', ec='k', color='b')
             ax.set_aspect('equal')        
         plt.title('Normal Estimation Weights')
@@ -169,8 +120,8 @@ class ScanNormalTSDFRangeInserter:
         ax.scatter(sensor_origin[0], sensor_origin[1], marker='x')
         for idx, normal_orientation in enumerate(normal_orientations):  
             normal_scale = 0.1
-            dx = -normal_scale*np.sin(normal_orientation)
-            dy = -normal_scale*np.cos(normal_orientation)        
+            dx = normal_scale*np.cos(normal_orientation)
+            dy = normal_scale*np.sin(normal_orientation)        
             ax.arrow(x_val[idx], y_val[idx], dx, dy, fc='k', ec='k', color='b')
             ax.set_aspect('equal')
         plt.title('Normal Estimation Variances')
@@ -178,13 +129,13 @@ class ScanNormalTSDFRangeInserter:
         ax = plt.subplot(413)
         x_val = [x[0] for x in hits]
         y_val = [x[1] for x in hits]
-        sc = ax.scatter(x_val, y_val, c=(normal_angle_to_ray), marker='x', cmap=cm.jet)
+        sc = ax.scatter(x_val, y_val, c=np.cos(normal_angle_to_ray), marker='x', cmap=cm.jet)
         plt.colorbar(sc)
         ax.scatter(sensor_origin[0], sensor_origin[1], marker='x')
         for idx, normal_orientation in enumerate(normal_orientations):  
             normal_scale = 0.1
-            dx = -normal_scale*np.sin(normal_orientation)
-            dy = -normal_scale*np.cos(normal_orientation)        
+            dx = normal_scale*np.cos(normal_orientation)
+            dy = normal_scale*np.sin(normal_orientation)        
             ax.arrow(x_val[idx], y_val[idx], dx, dy, fc='k', ec='k', color='b')
             ax.set_aspect('equal')
         plt.title('Angle normal to ray')
@@ -193,13 +144,14 @@ class ScanNormalTSDFRangeInserter:
         x_val = [x[0] for x in hits]
         y_val = [x[1] for x in hits]
         combined_weights = np.reciprocal(np.sqrt(np.array(normal_variances))) * (np.square(np.array(normal_weights))) * np.square(np.cos(normal_angle_to_ray))
+        combined_weights = np.cos(normal_angle_to_ray)
         sc = ax.scatter(x_val, y_val, c=combined_weights, marker='x', cmap=cm.jet)
         plt.colorbar(sc)
         ax.scatter(sensor_origin[0], sensor_origin[1], marker='x')
         for idx, normal_orientation in enumerate(normal_orientations):  
             normal_scale = 0.1
-            dx = -normal_scale*np.sin(normal_orientation)
-            dy = -normal_scale*np.cos(normal_orientation)        
+            dx = normal_scale*np.cos(normal_orientation)
+            dy = normal_scale*np.sin(normal_orientation)        
             ax.arrow(x_val[idx], y_val[idx], dx, dy, fc='k', ec='k', color='b')
             ax.set_aspect('equal')
         plt.title('Combined weight')
@@ -217,7 +169,8 @@ class ScanNormalTSDFRangeInserter:
         normal_orientations = []
         normal_orientation_variances = []
         normal_estimation_weight_sums = []
-        normal_estimation_angle_to_ray = []
+        normal_estimation_angles_to_ray = []
+        normal_estimation_angle_to_ray = 0
         for idx, hit in enumerate(hits):      
             #print('origin',origin)       
             #print('hit',hit)      
@@ -232,7 +185,8 @@ class ScanNormalTSDFRangeInserter:
                 normal_orientations += [normal_orientation]
                 normal_estimation_weight_sums += [normal_estimation_weight_sum]
                 normal_orientation_variances += [normal_var]
-                normal_estimation_angle_to_ray += [normal_orientation - angle_between(ray, np.array([0,1]))]
+                normal_estimation_angle_to_ray = normal_orientation - angle(-ray)
+                normal_estimation_angles_to_ray += [normal_estimation_angle_to_ray] # 
              
             ray_range = np.linalg.norm(ray)        
             range_inv = 1.0 / ray_range
@@ -251,11 +205,15 @@ class ScanNormalTSDFRangeInserter:
                 cell_index = tsdf.getCellIndexAtPosition(sampling_point)
                 cell_center = tsdf.getPositionAtCellIndex(cell_index)
                 distance = np.linalg.norm(cell_center - origin)
-                self.updateCell(tsdf, cell_index, ray_range - distance, ray_range, 1)                
+                if self.use_normals_weight:
+                    self.updateCell(tsdf, cell_index, ray_range - distance, ray_range, 3. * np.cos(normal_estimation_angle_to_ray))
+                else:
+                    self.updateCell(tsdf, cell_index, ray_range - distance, ray_range, 1)
                 #print('cell_index', cell_index)      
                 t = t_next
                 grid_index[min_coeff_idx] += grid_step[min_coeff_idx]
                 t_max[min_coeff_idx] += t_delta[min_coeff_idx]
         if self.use_normals_weight:
-            self.drawScanWithNormals(hits, normal_orientations, origin, normal_estimation_weight_sums, normal_orientation_variances, normal_estimation_angle_to_ray)
-            print('avg normal error', np.mean(np.abs(normal_orientations)))
+            #self.drawScanWithNormals(hits, normal_orientations, origin, normal_estimation_weight_sums, normal_orientation_variances, #normal_estimation_angles_to_ray)
+            #print('avg normal error', np.mean(np.abs(normal_orientations)))
+            pass
