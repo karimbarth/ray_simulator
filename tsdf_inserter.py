@@ -9,6 +9,16 @@ from shapely.geometry import LineString
 
 import tsdf
 
+def circular_weighted_average(angles, weights):
+    summed_weight = 0
+    summed_y = 0
+    summed_x =0
+    for i in range(len(angles)):
+        summed_y += np.sin(angles[i]) * weights[i]
+        summed_x += np.cos(angles[i]) * weights[i]
+    return math.atan2(summed_y,summed_x)
+    
+        
 
 def getRaytracingHelperVariables(observation_origin, observation_ray,t_start, t_end, grid_size_inv):
     traversal_start = observation_origin + t_start * observation_ray
@@ -54,12 +64,12 @@ def gaussian(x, mu=0, sigma=1):
 
 class ScanNormalTSDFRangeInserter:   
     
-    def __init__(self, use_normals_weight=False, n_normal_samples=8, default_weight=1, use_distance_cell_to_observation_weight=False, use_distance_cell_to_ray_weight=False, use_scale_distance=False, normal_distance_factor=1, max_weight=1000, draw_normals_scan_indices=[0]):
+    def __init__(self, use_normals_weight=False, n_normal_samples=8, default_weight=1, use_distance_cell_to_observation_weight=False, use_distance_cell_to_ray_weight=False, use_scale_distance=False, normal_distance_factor=1, max_weight=1000, draw_normals_scan_indices=[0], use_distance_cell_to_hit = False):
         self.use_normals_weight = use_normals_weight
         self.use_distance_cell_to_observation_weight = use_distance_cell_to_observation_weight
-        self.sigma_distance_cell_to_observation_weight = 0.7
+        self.sigma_distance_cell_to_observation_weight = 1.0
         self.use_distance_cell_to_ray_weight = use_distance_cell_to_ray_weight
-        self.sigma_distance_cell_to_ray_weight = 0.8
+        self.sigma_distance_cell_to_ray_weight = 0.6
         self.n_normal_samples = n_normal_samples
         self.default_weight = default_weight
         self.normal_distance_factor = normal_distance_factor #0 --> all normals same weight, 1 --> f(0)=1, f(0.1)=0.9 f(0.2)=0.82 independent of distance, inf -->only closest normal counts
@@ -67,6 +77,7 @@ class ScanNormalTSDFRangeInserter:
         self.draw_normals_scan_indices = draw_normals_scan_indices
         self.num_inserted_scans = 0
         self.use_scale_distance = use_scale_distance
+        self.use_distance_cell_to_hit = use_distance_cell_to_hit
         print(self)
         
     def __str__(self):
@@ -90,16 +101,13 @@ class ScanNormalTSDFRangeInserter:
         for neighbor in neighbors:
             sample_to_neighbor = sample - neighbor
             origin_to_neighbor = sample_origin - neighbor
+            origin_to_sample = sample_origin - sample
             sample_to_neighbor_rotated = np.array([-sample_to_neighbor[1],sample_to_neighbor[0]])
-            if(sample_to_neighbor_rotated.dot(origin_to_neighbor) > 0):
+            if(sample_to_neighbor_rotated.dot(origin_to_sample) > 0):
                 sample_to_neighbor = -sample_to_neighbor
             
             tangent_angle = angle(sample_to_neighbor)
-            #if(np.abs(tangent_angle) > math.pi/2):
-            #    print('tangent out of interval', tangent_angle)
-            #print('tangent', tangent_angle)
-            normal_angle = tangent_angle - math.pi/2
-            #print('normal_angle',normal_angle)
+            normal_angle = toTwoPi(tangent_angle - math.pi/2)
             normals += [normal_angle]
             normal_distance = np.linalg.norm(sample-neighbor)
             normal_distances += [normal_distance]
@@ -107,8 +115,12 @@ class ScanNormalTSDFRangeInserter:
             
         normals = np.array(normals)
         normal_weights = np.array(normal_weights)
-        normal_mean = np.average(normals, weights=normal_weights)
-        normal_var = np.average((normals-normal_mean)**2, weights=normal_weights)
+        normal_mean = circular_weighted_average(normals, normal_weights)
+        delta = normals-normal_mean
+        delta_flipped = (normals-normal_mean)-2*math.pi
+        is_min_delta = np.abs(delta) < np.abs(delta_flipped)
+        min_deltas = delta*is_min_delta + delta_flipped*(1-is_min_delta)
+        normal_var = np.average((min_deltas-normal_mean)**2, weights=normal_weights)
         normal_weight_sum = np.sum(normal_weights)
         return normal_mean, normal_var, normal_weight_sum
         
@@ -217,25 +229,38 @@ class ScanNormalTSDFRangeInserter:
                 cell_index = tsdf.getCellIndexAtPosition(sampling_point)
                 cell_center = tsdf.getPositionAtCellIndex(cell_index)
                 distance_cell_center_to_origin = np.linalg.norm(cell_center - origin)
+                distance_cell_center_to_hit = np.linalg.norm(cell_center - hit)
                 update_weight = 1
                 update_distance = ray_range - distance_cell_center_to_origin
                 #use_distance_cell_to_observation_weight
                 if self.use_normals_weight:
                     update_weight = np.cos(normal_estimation_angle_to_ray)
+                    if(update_weight < 0):
+                        print('WARNING update_weight=',update_weight)
                 if self.use_distance_cell_to_observation_weight:
                     normalized_distance_cell_to_observation = np.abs(ray_range - distance_cell_center_to_origin)/tsdf.resolution
-                    distance_cell_to_observation_weight = gaussian(normalized_distance_cell_to_observation, 0, self.sigma_distance_cell_to_observation_weight)                    
-                    distance_cell_to_observation_weight = (tsdf.truncation_distance - np.abs(ray_range - distance_cell_center_to_origin))/tsdf.truncation_distance
+                    distance_cell_to_observation_weight = gaussian(normalized_distance_cell_to_observation, 0, self.sigma_distance_cell_to_observation_weight)              
+                    '''      
+                    distance_cell_to_observation_weight = np.abs((tsdf.truncation_distance - np.abs(ray_range - distance_cell_center_to_origin))/tsdf.truncation_distance)
+                    '''
                     update_weight *= distance_cell_to_observation_weight
+                    if distance_cell_to_observation_weight < 0:
+                        print('WARNING distance_cell_to_observation_weight=',distance_cell_to_observation_weight)
                 if self.use_distance_cell_to_ray_weight:
                     distance_cell_to_ray = distanceLinePoint(origin, hit, cell_center)/tsdf.resolution
                     #distance_cell_to_ray_weight = distance_cell_to_ray
                     distance_cell_to_ray_weight = gaussian(distance_cell_to_ray, 0, self.sigma_distance_cell_to_ray_weight)                    
                     update_weight *= distance_cell_to_ray_weight
+                    if distance_cell_to_ray_weight < 0:
+                        print('WARNING distance_cell_to_ray_weight=',distance_cell_to_ray_weight)
                 
                 if self.use_scale_distance:
                     #print(np.array([np.cos(normal_orientation), np.sin(normal_orientation)]))
                     update_distance = (cell_center - hit).dot(np.array([np.cos(normal_orientation), np.sin(normal_orientation)]))
+                if self.use_distance_cell_to_hit:
+                    update_distance = distance_cell_center_to_hit
+                if self.use_distance_cell_to_hit and self.use_scale_distance:
+                    print('CONFIGURATION ERROR')
                     
                 
                 self.updateCell(tsdf, cell_index, update_distance , ray_range, update_weight)
