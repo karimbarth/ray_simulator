@@ -11,7 +11,35 @@ from tsdf_inserter import ScanNormalTSDFRangeInserter
 from tsdf import TSDF
 
 def generateEnvironment():
-    obstacle = LineString([(1, 1.7), (9, 2.3)])
+    
+    #Line
+    #obstacle = LineString([(1, 1.5), (9, 2.3)])
+    
+    #slightly jagged line
+    #obstacle = LineString([(1, 1.5), (3.2, 2.3), (4.8, 1.7), (7.1, 2.4), (9, 1.4)])
+    
+    #strongly jagged line
+    #obstacle = LineString([(1, 1.5), (2.2, 2.3), (2.9, 1.7), (4.1, 2.4), (5.1, 1.4), (5.9, 2.3), (6.8, 1.7), (7.1, 2.4), (7.7, 1.4), (9, 2.4)])
+    
+    # sine wave
+    '''
+    sine_x = np.arange(1.0, 9.0, 0.1)
+    sine_y = np.sin(sine_x*3)*0.25+1.75
+    sine_points = []
+    for i in range(1,len(sine_x)):
+        sine_points += [[sine_x[i], sine_y[i]]]
+    obstacle = LineString(sine_points)
+    '''
+    
+    sine_x = np.arange(1.0, 9.0, 0.1)
+    sine_y = np.round(np.sin(sine_x*3))*0.25+1.75
+    sine_points = []
+    for i in range(1,len(sine_x)):
+        sine_points += [[sine_x[i], sine_y[i]]]
+    obstacle = LineString(sine_points)
+        
+    
+    
     #x, y = obstacle.xy
     #ax.plot(x, y, color='black',  linewidth=1)
     return obstacle
@@ -160,7 +188,7 @@ def singleRay(range_inserter, environment, title_trunk='Default'):
     tsdfs = []
     hits = None
     sensor_origin = None
-    for x in range(22,23,1):
+    for x in range(1,43,1):
         sensor_origin = (x/5.0,1.0)    
         hits = rangefinder.scan(environment, sensor_origin)  
         range_inserter.insertScan(tsdf, hits, sensor_origin)   

@@ -54,7 +54,7 @@ def gaussian(x, mu=0, sigma=1):
 
 class ScanNormalTSDFRangeInserter:   
     
-    def __init__(self, use_normals_weight=False, n_normal_samples=8, default_weight=1, use_distance_cell_to_observation_weight=False, use_distance_cell_to_ray_weight=False, use_scale_distance=False, normal_distance_factor=1, max_weight=1000, draw_normals_scan_indices=[10]):
+    def __init__(self, use_normals_weight=False, n_normal_samples=8, default_weight=1, use_distance_cell_to_observation_weight=False, use_distance_cell_to_ray_weight=False, use_scale_distance=False, normal_distance_factor=1, max_weight=1000, draw_normals_scan_indices=[0]):
         self.use_normals_weight = use_normals_weight
         self.use_distance_cell_to_observation_weight = use_distance_cell_to_observation_weight
         self.sigma_distance_cell_to_observation_weight = 0.7
