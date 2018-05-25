@@ -83,18 +83,20 @@ class ScanNormalTSDFRangeInserter:
         #tsdf.setTSDF(cell_index, 0.5)  
 
     
-    def computeNormal(self, sample, neighbors):
+    def computeNormal(self, sample, neighbors, sample_origin):
         normals = []
         normal_distances = []
         normal_weights = []
         for neighbor in neighbors:
-            delta_sample = sample-neighbor
-            if(delta_sample[0] < 0):
-                delta_sample = -delta_sample
+            sample_to_neighbor = sample - neighbor
+            origin_to_neighbor = sample_origin - neighbor
+            sample_to_neighbor_rotated = np.array([-sample_to_neighbor[1],sample_to_neighbor[0]])
+            if(sample_to_neighbor_rotated.dot(origin_to_neighbor) > 0):
+                sample_to_neighbor = -sample_to_neighbor
             
-            tangent_angle = angle(delta_sample)
-            if(np.abs(tangent_angle) > math.pi/2):
-                print('tangent out of interval', tangent_angle)
+            tangent_angle = angle(sample_to_neighbor)
+            #if(np.abs(tangent_angle) > math.pi/2):
+            #    print('tangent out of interval', tangent_angle)
             #print('tangent', tangent_angle)
             normal_angle = tangent_angle - math.pi/2
             #print('normal_angle',normal_angle)
@@ -191,7 +193,7 @@ class ScanNormalTSDFRangeInserter:
                 neighbor_indices = np.array(list(range(idx-int(np.floor(self.n_normal_samples/2)), idx)) + list(range(idx+1, idx+int(np.ceil(self.n_normal_samples/2) + 1))))
                 neighbor_indices = neighbor_indices[neighbor_indices >= 0]
                 neighbor_indices = neighbor_indices[neighbor_indices < n_hits]
-                normal_orientation, normal_var, normal_estimation_weight_sum = self.computeNormal(hit, hits[neighbor_indices])
+                normal_orientation, normal_var, normal_estimation_weight_sum = self.computeNormal(hit, hits[neighbor_indices], origin)
                 normal_orientations += [normal_orientation]
                 normal_estimation_weight_sums += [normal_estimation_weight_sum]
                 normal_orientation_variances += [normal_var]

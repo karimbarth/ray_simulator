@@ -31,12 +31,24 @@ def generateEnvironment():
     obstacle = LineString(sine_points)
     '''
     
-    sine_x = np.arange(1.0, 9.0, 0.1)
-    sine_y = np.round(np.sin(sine_x*3))*0.25+1.75
-    sine_points = []
-    for i in range(1,len(sine_x)):
-        sine_points += [[sine_x[i], sine_y[i]]]
-    obstacle = LineString(sine_points)
+    x = np.arange(1.0, 9.0, )
+    points = []
+    px = 1
+    py = 1.75
+    dx = 1
+    dy = 0.5
+    i_line = 1
+    while px<9:
+        step_type = i_line%4
+        if step_type == 0 or step_type == 2:
+            px += dx
+        elif step_type == 1:
+            py += dy
+        elif step_type == 3:
+            py -= dy 
+        i_line += 1
+        points += [[px, py]]
+    obstacle = LineString(points)
         
     
     
@@ -188,7 +200,7 @@ def singleRay(range_inserter, environment, title_trunk='Default'):
     tsdfs = []
     hits = None
     sensor_origin = None
-    for x in range(1,43,1):
+    for x in range(22,25,1):
         sensor_origin = (x/5.0,1.0)    
         hits = rangefinder.scan(environment, sensor_origin)  
         range_inserter.insertScan(tsdf, hits, sensor_origin)   
@@ -236,11 +248,11 @@ if __name__ == '__main__':
     default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=True, n_normal_samples=8, use_distance_cell_to_observation_weight=True, use_distance_cell_to_ray_weight=False,  use_scale_distance=True);
     tsdfs += [singleRay(default_inserter, environment, 'Weight=cos(alpha)*distance1 + scale_dist ')]
     tsdf_identifiers += ['angle*dist1 + scale_dist']
-    
+    '''
     default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=True, n_normal_samples=8, use_distance_cell_to_observation_weight=True, use_distance_cell_to_ray_weight=True,  use_scale_distance=True);
     tsdfs += [singleRay(default_inserter, environment, 'Weight=cos(alpha)*distance1*distance2  + scale_dist  ')]
     tsdf_identifiers += ['angle*dist1*dist2 + scale_dist']
-
+'''
     
     
     plotTSDFErrorDeltasMatrix(tsdfs, tsdf_identifiers, environment)
