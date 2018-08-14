@@ -29,9 +29,7 @@ def getRaytracingHelperVariables(observation_origin, observation_ray,t_start, t_
     traversal_ray_scaled_inv =(1. / traversal_ray_scaled[0], 1. / traversal_ray_scaled[1])
     grid_index = np.round(traversal_start_scaled)
     grid_step = np.sign(traversal_ray_scaled)
-    #adjustment = (grid_step > 0).astype(float)
-    grid_index_adjusted = grid_index + 0.5*grid_step    
-    t_max = (grid_index_adjusted - traversal_start_scaled) * traversal_ray_scaled_inv
+    t_max = (grid_index - traversal_start_scaled) * traversal_ray_scaled_inv
     t_delta = grid_step * traversal_ray_scaled_inv
     return grid_index, grid_step, t_max, t_delta
 
@@ -126,7 +124,7 @@ class ScanNormalTSDFRangeInserter:
         
     def drawScanWithNormals(self, hits, normal_orientations, sensor_origin, normal_weights, normal_variances, normal_angle_to_ray):
         fig = plt.figure()
-        ax = plt.subplot(411)
+        ax = plt.subplot(311)
         x_val = [x[0] for x in hits]
         y_val = [x[1] for x in hits]
         sc = ax.scatter(x_val, y_val, c=normal_weights, marker='x', cmap=cm.jet)
@@ -139,7 +137,7 @@ class ScanNormalTSDFRangeInserter:
             ax.arrow(x_val[idx], y_val[idx], dx, dy, fc='k', ec='k', color='b')
             ax.set_aspect('equal')        
         plt.title('Normal Estimation Weights')
-            
+        '''    
         ax = plt.subplot(412)
         x_val = [x[0] for x in hits]
         y_val = [x[1] for x in hits]
@@ -153,8 +151,8 @@ class ScanNormalTSDFRangeInserter:
             ax.arrow(x_val[idx], y_val[idx], dx, dy, fc='k', ec='k', color='b')
             ax.set_aspect('equal')
         plt.title('Normal Estimation Variances')
-            
-        ax = plt.subplot(413)
+         '''   
+        ax = plt.subplot(312)
         x_val = [x[0] for x in hits]
         y_val = [x[1] for x in hits]
         sc = ax.scatter(x_val, y_val, c=np.cos(normal_angle_to_ray), marker='x', cmap=cm.jet)
@@ -168,7 +166,7 @@ class ScanNormalTSDFRangeInserter:
             ax.set_aspect('equal')
         plt.title('Angle normal to ray')
             
-        ax = plt.subplot(414)
+        ax = plt.subplot(313)
         x_val = [x[0] for x in hits]
         y_val = [x[1] for x in hits]
         combined_weights = np.reciprocal(np.sqrt(np.array(normal_variances))) * (np.square(np.array(normal_weights))) * np.square(np.cos(normal_angle_to_ray))
@@ -195,7 +193,7 @@ class ScanNormalTSDFRangeInserter:
         normal_estimation_angles_to_ray = []
         normal_estimation_angle_to_ray = 0
         normal_orientation = 0
-        for idx, hit in enumerate(hits):      
+        for idx, hit in enumerate(hits):    
             #print('origin',origin)       
             #print('hit',hit)      
             hit = np.array(hit)

@@ -7,6 +7,8 @@ from shapely.geometry import MultiLineString, LineString, Point
 import copy
 import svgpathtools
 import math
+import pandas as pd
+
 
 
 from rangefinder import Rangefinder
@@ -100,6 +102,83 @@ def generateEnvironment():
     return obstacle
 
 
+def plotTSDFWithOrigins(tsdf, sensor_origins, hits, environment, caption):    
+    fig = plt.figure()
+    ax = plt.subplot(311)
+    extent = -tsdf.resolution/2.0, tsdf.size+tsdf.resolution/2.0, -tsdf.resolution/2.0, tsdf.size+tsdf.resolution/2.0
+    plt.imshow(tsdf.tsdf, interpolation='nearest',extent=extent, cmap= 'seismic', origin="lower",vmin = -1, vmax = 1)
+    #plt.ylim(0.5,2.5)
+    plt.title('TSDF')
+    plt.colorbar()
+    for e in environment:
+        environment_x, environment_y = e.xy
+        ax.plot(environment_x, environment_y, color='black',  linewidth=1)
+    x_val = [x[0] for x in sensor_origins]
+    y_val = [x[1] for x in sensor_origins]
+    ax.scatter(x_val, y_val, marker='x')
+    
+    ax = plt.subplot(312)
+    extent = -tsdf.resolution/2.0, tsdf.size+tsdf.resolution/2.0, -tsdf.resolution/2.0, tsdf.size+tsdf.resolution/2.0
+    plt.imshow(tsdf.weights, interpolation='nearest',extent=extent, cmap= 'jet', origin="lower")
+    #plt.ylim(0.5,2.5)
+    plt.title('TSDF Weights')
+    plt.colorbar()
+    
+
+    ax.plot(environment_x, environment_y, color='black',  linewidth=1)    
+    for hit in hits:
+        hit_ray = np.transpose(np.array([hit, sensor_origins[0]]))
+        ax.plot(hit_ray[0], hit_ray[1], color='black',  linewidth=1)
+        
+    
+    ax = plt.subplot(313)
+    extent = -tsdf.resolution/2.0, tsdf.size+tsdf.resolution/2.0, -tsdf.resolution/2.0, tsdf.size+tsdf.resolution/2.0
+    tsdf_grund_truth = 0.*tsdf.tsdf
+    it = np.nditer(tsdf_grund_truth, flags=['multi_index'], op_flags=['readwrite'])
+    while not it.finished:
+        idx = [[it.multi_index[0]],[it.multi_index[1]]]
+        point_position = tsdf.getPositionAtCellIndex(idx)
+        distance = environment.distance(Point(point_position))
+        it[0] = min(distance, tsdf.truncation_distance)
+        it.iternext()
+    tsdf_error = 0.*tsdf.tsdf
+    tsdf_error[tsdf.weights > 0] = np.abs(tsdf_grund_truth[tsdf.weights > 0] - np.abs(tsdf.tsdf[tsdf.weights>0]))
+    #tsdf_error = np.abs(tsdf_error - np.abs(tsdf.tsdf))
+    plt.imshow(tsdf_error, interpolation='nearest',extent=extent, cmap= 'jet', origin="lower",vmin =0, vmax = 0.1)
+    #plt.ylim(0.5,2.5)
+    plt.title('TSDF Error')
+    plt.suptitle(caption)
+    plt.colorbar()
+    
+    
+
+def plotTSDFWithOriginsWithoutEnvironment(tsdf, sensor_origins, hits, caption):    
+    fig = plt.figure()
+    ax = plt.subplot(211)
+    extent = -tsdf.resolution/2.0, tsdf.size+tsdf.resolution/2.0, -tsdf.resolution/2.0, tsdf.size+tsdf.resolution/2.0
+    plt.imshow(tsdf.tsdf, interpolation='nearest',extent=extent, cmap= 'seismic', origin="lower",vmin = -1, vmax = 1)
+    #plt.ylim(0.5,2.5)
+    plt.title('TSDF')
+    plt.colorbar()
+    
+    x_val = [x[0] for x in sensor_origins]
+    y_val = [x[1] for x in sensor_origins]
+    ax.scatter(x_val, y_val, marker='x')
+    
+    ax = plt.subplot(212)
+    extent = -tsdf.resolution/2.0, tsdf.size+tsdf.resolution/2.0, -tsdf.resolution/2.0, tsdf.size+tsdf.resolution/2.0
+    plt.imshow(tsdf.weights, interpolation='nearest',extent=extent, cmap= 'jet', origin="lower")
+    #plt.ylim(0.5,2.5)
+    plt.title('TSDF Weights')
+    plt.colorbar()
+    
+
+    for hit in hits:
+        hit_ray = np.transpose(np.array([hit, sensor_origins[0]]))
+        ax.plot(hit_ray[0], hit_ray[1], color='black',  linewidth=1)        
+        
+    plt.suptitle(caption)
+
 def plotTSDFWithScan(tsdf, hits, sensor_origin, environment, caption):    
     fig = plt.figure()
     ax = plt.subplot(311)
@@ -123,12 +202,12 @@ def plotTSDFWithScan(tsdf, hits, sensor_origin, environment, caption):
     plt.title('TSDF Weights')
     plt.colorbar()
     
-    '''
+    #rays
     ax.plot(environment_x, environment_y, color='black',  linewidth=1)    
     for hit in hits:
         hit_ray = np.transpose(np.array([hit, sensor_origin]))
         ax.plot(hit_ray[0], hit_ray[1], color='black',  linewidth=1)
-    '''   
+       
     
     ax = plt.subplot(313)
     extent = -tsdf.resolution/2.0, tsdf.size+tsdf.resolution/2.0, -tsdf.resolution/2.0, tsdf.size+tsdf.resolution/2.0
@@ -243,6 +322,8 @@ def singleRay(range_inserter, environment, title_trunk='Default'):
     tsdfs = []
     hits = None
     sensor_origin = None
+    origin_history = []
+    '''
     n_steps = 10
     start_x = 4.0
     end_x = 4.0
@@ -254,7 +335,8 @@ def singleRay(range_inserter, environment, title_trunk='Default'):
         print((start_x+delta_x*i_step/n_steps,start_y+delta_y*i_step/n_steps))
         sensor_origin = (start_x+delta_x*i_step/n_steps,start_y+delta_y*i_step/n_steps)    
         hits = rangefinder.scan(environment, sensor_origin)  
-        range_inserter.insertScan(tsdf, hits, sensor_origin)   
+        range_inserter.insertScan(tsdf, hits, sensor_origin)  
+        origin_history += [sensor_origin]
     #plotTSDFWithScan(tsdf, hits, sensor_origin, environment, title_trunk + ' TSDF')
     
     n_steps = 4
@@ -268,7 +350,8 @@ def singleRay(range_inserter, environment, title_trunk='Default'):
         print((start_x+delta_x*i_step/n_steps,start_y+delta_y*i_step/n_steps))
         sensor_origin = (start_x+delta_x*i_step/n_steps,start_y+delta_y*i_step/n_steps)    
         hits = rangefinder.scan(environment, sensor_origin)  
-        range_inserter.insertScan(tsdf, hits, sensor_origin)               
+        range_inserter.insertScan(tsdf, hits, sensor_origin)     
+        origin_history += [sensor_origin]          
     #plotTSDFWithScan(tsdf, hits, sensor_origin, environment, title_trunk + ' TSDF')
     n_steps = 4
     start_x = 6.0
@@ -281,13 +364,23 @@ def singleRay(range_inserter, environment, title_trunk='Default'):
         print((start_x+delta_x*i_step/n_steps,start_y+delta_y*i_step/n_steps))
         sensor_origin = (start_x+delta_x*i_step/n_steps,start_y+delta_y*i_step/n_steps)    
         hits = rangefinder.scan(environment, sensor_origin)  
-        range_inserter.insertScan(tsdf, hits, sensor_origin)               
-    plotTSDFWithScan(tsdf, hits, sensor_origin, environment, title_trunk + ' TSDF')
+        range_inserter.insertScan(tsdf, hits, sensor_origin)      
+        origin_history += [sensor_origin]         
+        '''
+        
+    
+    sensor_origin = (4,3)    
+    hits = rangefinder.scan(environment, sensor_origin)  
+    range_inserter.insertScan(tsdf, hits, sensor_origin)      
+    origin_history += [sensor_origin]
+    #plotTSDFWithScan(tsdf, hits, sensor_origin, environment, title_trunk + ' TSDF')
+    plotTSDFWithOrigins(tsdf, origin_history, hits, environment, title_trunk + ' TSDF')
     #plotTSDFErrorDeltas(tsdfs, hits, sensor_origin, environment)
     
     return tsdf
-   
-if __name__ == '__main__':        
+
+
+def evaluateEnvironment():
     environment = generateEnvironment()
     tsdfs = []
     tsdf_identifiers = []
@@ -309,6 +402,12 @@ if __name__ == '__main__':
     default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=True, n_normal_samples=4, use_distance_cell_to_observation_weight=False, use_distance_cell_to_ray_weight=False,  use_scale_distance=True);
     tsdfs += [singleRay(default_inserter, environment, 'Weight=const + scale_dist ')]
     tsdf_identifiers += ['const + scale_dist']  
+    
+    
+    default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=False, n_normal_samples=4, use_distance_cell_to_observation_weight=False, use_distance_cell_to_ray_weight=True,  use_scale_distance=False);
+    tsdfs += [singleRay(default_inserter, environment, 'Weight= dist2')]
+    tsdf_identifiers += ['dist2']
+    
 
     '''
     default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=False, n_normal_samples=4, use_distance_cell_to_observation_weight=False, use_distance_cell_to_ray_weight=True);
@@ -342,6 +441,46 @@ if __name__ == '__main__':
     
     
     
-    plotTSDFErrorDeltasMatrix(tsdfs, tsdf_identifiers, environment)
+    #plotTSDFErrorDeltasMatrix(tsdfs, tsdf_identifiers, environment)
     plotTSDFErrorMatrix(tsdfs, tsdf_identifiers, environment)
     plt.show()
+
+
+def evaluateScanWithRangInserter(range_inserter):
+    df=pd.read_csv('./scans/range_data_1527600509.csv', sep=',',header=None)
+    scene_size = 10
+    scan_with_origin = df.values[:,0:2]
+    bb_max = np.max(scan_with_origin,0)
+    bb_min = np.min(scan_with_origin,0)
+    bb_delta = bb_max-bb_min
+    rescaled_scan_with_origin = 1 - bb_min + scan_with_origin
+    
+    sensor_origin = rescaled_scan_with_origin[0,:]
+    hits = rescaled_scan_with_origin[1:,:]
+    
+    tsdfs = []
+    tsdf_identifiers = []    
+    origin_history = []
+    tsdf = TSDF(np.max(rescaled_scan_with_origin)+2)    
+    
+    range_inserter.insertScan(tsdf, hits, sensor_origin)      
+    origin_history += [sensor_origin]
+    
+    plotTSDFWithOriginsWithoutEnvironment(tsdf, origin_history, hits, ' TSDF')
+    
+def evaluateScan():
+    default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=False)
+    evaluateScanWithRangInserter(default_inserter)
+
+    default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=True, n_normal_samples=4)
+    evaluateScanWithRangInserter(default_inserter)
+
+    default_inserter = ScanNormalTSDFRangeInserter(use_normals_weight=True, n_normal_samples=4,  use_scale_distance=True)
+    evaluateScanWithRangInserter(default_inserter)
+
+    
+if __name__ == '__main__':  
+    
+    evaluateScan()
+    plt.show()
+

@@ -1,10 +1,10 @@
 import numpy as np
 
 class TSDF:
-    def __init__(self):
-        self.resolution = 0.1
-        self.size = 10.0
-        self.truncation_distance = 0.3
+    def __init__(self, size=10.0):
+        self.resolution = 0.05
+        self.size = size
+        self.truncation_distance = 0.5
         #we assume a grid with the origin at (0,0) only defined in positive direction
         n_cells_per_dimension = int(self.size/self.resolution + 1)
         self.tsdf = np.zeros((n_cells_per_dimension, n_cells_per_dimension))
