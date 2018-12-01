@@ -10,7 +10,6 @@ import math
 import pandas as pd
 
 
-
 from rangefinder import Rangefinder
 from tsdf_inserter import ScanNormalTSDFRangeInserter
 from tsdf import TSDF
