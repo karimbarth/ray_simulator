@@ -3,7 +3,7 @@ import math
 from shapely.geometry import MultiLineString
 
 from rangefinder import Rangefinder
-
+import scan_matcher
 
 DEFAULT_MAP = "floorplan_simplified.svg"
 DEFAULT_FILTER = "voxel_filter"
@@ -58,9 +58,23 @@ def input_user_selection():
     return map_name, filter_name
 
 
+def makeScan(sensor_origin, map):
+    rangefinder = Rangefinder()
+    return rangefinder.scan(map, sensor_origin)
+
+
 if __name__ == '__main__':
+
     map_name, filter_name = input_user_selection()
 
-    grid_map = svg_to_environment("./geometries/" + map_name)
+    # TODO generate Gridmap
+    environment = svg_to_environment("./geometries/" + map_name)
 
-    rangefinder = Rangefinder()
+    # TODO add orientation angle to range finder
+    sensor_origin = (4, 3)
+    hits = makeScan(sensor_origin, environment)
+    scan_matcher.match_scan(environment, hits, [])
+
+
+
+
