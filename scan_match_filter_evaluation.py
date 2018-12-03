@@ -1,6 +1,8 @@
 import svgpathtools
 import math
+import numpy as np
 from shapely.geometry import MultiLineString
+import matplotlib.pyplot as plt
 
 from rangefinder import Rangefinder
 import scan_matcher
@@ -45,6 +47,26 @@ def svg_to_environment(svg_file):
     return obstacle
 
 
+def plotScan(sensor_origin, estimate, hits, environment, title):
+    plt.figure()
+    plt.title(title)
+    for e in environment:
+        label = "environment" if "environment" not in plt.gca().get_legend_handles_labels()[1] else ""
+        environment_x, environment_y = e.xy
+        plt.plot(environment_x, environment_y, color='black', linewidth=2, label=label)
+
+    plt.plot(environment_x, environment_y, color='black', linewidth=1)
+    for hit in hits:
+        label = "hit" if "hit" not in plt.gca().get_legend_handles_labels()[1] else ""
+        hit_ray = np.transpose(np.array([hit, sensor_origin]))
+        plt.plot(hit_ray[0], hit_ray[1], color='green', linewidth=1, linestyle=':', label=label)
+
+    plt.scatter([sensor_origin[0]], [sensor_origin[1]], s=np.array([100, 100]), marker='x', c='blue', label="ground "
+                                                                                                            "truth")
+    plt.scatter([estimate[0]], [estimate[1]], s=np.array([100, 100]), marker='x', c='red', label="estimate")
+    plt.legend(loc='lower right')
+
+
 def input_user_selection():
     map_name = input("Please enter the name of the world map (default .....): ")
     if not map_name:
@@ -58,9 +80,9 @@ def input_user_selection():
     return map_name, filter_name
 
 
-def makeScan(sensor_origin, map):
+def make_scan(sensor_origin, obstacle):
     rangefinder = Rangefinder()
-    return rangefinder.scan(map, sensor_origin)
+    return rangefinder.scan(obstacle, sensor_origin)
 
 
 if __name__ == '__main__':
@@ -70,10 +92,9 @@ if __name__ == '__main__':
     # TODO generate Gridmap
     environment = svg_to_environment("./geometries/" + map_name)
 
-    # TODO add orientation angle to range finder
     sensor_origin = (4, 3)
-    hits = makeScan(sensor_origin, environment)
-    scan_matcher.match_scan(environment, hits, [])
+    hits = make_scan(sensor_origin, environment)
+    plotScan(sensor_origin, (1, 5), hits, environment, "Test")
 
 
 
