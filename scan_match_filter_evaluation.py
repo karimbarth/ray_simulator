@@ -5,7 +5,7 @@ from shapely.geometry import MultiLineString
 import matplotlib.pyplot as plt
 
 from rangefinder import Rangefinder
-import scan_matcher
+import nativ.scan_matcher as scan_matcher
 
 DEFAULT_MAP = "floorplan_simplified.svg"
 DEFAULT_FILTER = "voxel_filter"
@@ -94,7 +94,12 @@ if __name__ == '__main__':
 
     sensor_origin = (4, 3)
     hits = make_scan(sensor_origin, environment)
+
+    print(scan_matcher.add(1,2))
+
     plotScan(sensor_origin, (1, 5), hits, environment, "Test")
+    plt.show()
+
 
 
 
