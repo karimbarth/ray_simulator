@@ -1,7 +1,7 @@
 import svgpathtools
 import math
 import numpy as np
-from shapely.geometry import MultiLineString
+from shapely.geometry import MultiLineString, Point
 import matplotlib.pyplot as plt
 
 from rangefinder import Rangefinder
@@ -11,7 +11,7 @@ DEFAULT_MAP = "floorplan_simplified.svg"
 DEFAULT_FILTER = "voxel_filter"
 
 
-def svg_to_environment(svg_file):
+def svg_to_environment(svg_file, size=10):
     paths = svgpathtools.svg2paths(svg_file, return_svg_attributes=False)[0]
 
     points = []
@@ -33,7 +33,7 @@ def svg_to_environment(svg_file):
 
     i = 0
     offset = 1
-    scale = 8
+    scale = size - 2
     for path in paths:
         for line in path:
             p_start_x = offset + scale * (line.start.real - min_x) / (max_x - min_x)
@@ -47,7 +47,18 @@ def svg_to_environment(svg_file):
     return obstacle
 
 
-def plotScan(sensor_origin, estimate, hits, environment, title):
+def create_grid_map(environment, size, resolution):
+    num_cells = int(size/resolution)
+    grid_map = np.zeros((num_cells, num_cells))
+
+    for i in range(num_cells):
+        for j in range(num_cells):
+            grid_map[i, j] = environment.distance(Point(i*resolution, j*resolution)) < resolution
+
+    return grid_map
+
+
+def plot_scan(sensor_origin, estimate, hits, environment, title):
     plt.figure()
     plt.title(title)
     for e in environment:
@@ -56,7 +67,8 @@ def plotScan(sensor_origin, estimate, hits, environment, title):
         plt.plot(environment_x, environment_y, color='black', linewidth=2, label=label)
 
     plt.plot(environment_x, environment_y, color='black', linewidth=1)
-    for hit in hits:
+    for i in range(hits.shape[1]):
+        hit = hits[:, i]
         label = "hit" if "hit" not in plt.gca().get_legend_handles_labels()[1] else ""
         hit_ray = np.transpose(np.array([hit, sensor_origin]))
         plt.plot(hit_ray[0], hit_ray[1], color='green', linewidth=1, linestyle=':', label=label)
@@ -65,6 +77,27 @@ def plotScan(sensor_origin, estimate, hits, environment, title):
                                                                                                             "truth")
     plt.scatter([estimate[0]], [estimate[1]], s=np.array([100, 100]), marker='x', c='red', label="estimate")
     plt.legend(loc='lower right')
+
+
+def plot_grid_map(grid_map, map_resolution):
+    fig = plt.figure()
+    map_size = grid_map.shape[0] * map_resolution
+    plt.title("Grid Map")
+    index_array = np.where(grid_map == 1)
+    plt.scatter(index_array[0] * map_resolution, index_array[1] * map_resolution,
+               s=np.array([120 * map_resolution, 120 * map_resolution]), marker='x', c='black')
+
+    ax = fig.axes[0]
+    major_ticks = np.arange(0, map_size, 1)
+    minor_ticks = np.arange(0, map_size, map_resolution)
+
+    ax.set_xticks(major_ticks)
+    ax.set_xticks(minor_ticks, minor=True)
+    ax.set_yticks(major_ticks)
+    ax.set_yticks(minor_ticks, minor=True)
+    ax.grid(which='minor', alpha=0.2)
+    ax.grid(which='major', alpha=0.5)
+
 
 
 def input_user_selection():
@@ -82,22 +115,35 @@ def input_user_selection():
 
 def make_scan(sensor_origin, obstacle):
     rangefinder = Rangefinder()
-    return rangefinder.scan(obstacle, sensor_origin)
+    # use 2d numpy array instead list of 1d numpy arrays
+    map_coords = np.stack(rangefinder.scan(obstacle, sensor_origin), axis=1)
+    # transform point cloud in lidar coordinate frame (currently without rotation)
+    sensor_coords = map_coords - np.array([[sensor_origin[0]], [sensor_origin[1]]])
+    return map_coords, sensor_coords
+
+
+def evaluate():
+    map_name, filter_name = input_user_selection()
+    sensor_origin = (4, 3)
+    initial_pose = np.array([4, 3, 0]);
+    map_size = 10
+    map_resolution = 0.25
+
+    environment = svg_to_environment("./geometries/" + map_name, map_size)
+    grid_map = create_grid_map(environment, map_size, map_resolution)
+
+    hits, hits_array = make_scan(sensor_origin, environment)
+
+    x, y, theta = scan_matcher.match(hits_array, grid_map, map_resolution, initial_pose)
+    print("Result: ", x, ", ", y, ", ", theta);
+
+    plot_scan(sensor_origin, (x, y), hits, environment, "No Filter")
+
+    plot_grid_map(grid_map, map_resolution)
 
 
 if __name__ == '__main__':
-
-    map_name, filter_name = input_user_selection()
-
-    # TODO generate Gridmap
-    environment = svg_to_environment("./geometries/" + map_name)
-
-    sensor_origin = (4, 3)
-    hits = make_scan(sensor_origin, environment)
-
-    print(scan_matcher.add(1,2))
-
-    plotScan(sensor_origin, (1, 5), hits, environment, "Test")
+    evaluate()
     plt.show()
 
 
