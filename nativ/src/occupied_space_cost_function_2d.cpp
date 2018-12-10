@@ -56,8 +56,10 @@ public:
     {
       const Eigen::Matrix<T, 3, 1> point((T(point_cloud_.at(0,i))), (T(point_cloud_.at(1,i))), T(1.));
       const Eigen::Matrix<T, 3, 1> world = transform * point;
-      interpolator.Evaluate(world[0] * scaling_factor_, world[1] * scaling_factor_ , &residual[i]);
-      //residual[i] = 1 - residual[i];
+
+      T grid_map_value;
+      interpolator.Evaluate(world[0] * scaling_factor_, world[1] * scaling_factor_ , &grid_map_value);
+      residual[i] = T(1.) - grid_map_value;
     }
 
     return true;
@@ -78,7 +80,7 @@ private:
       if(row >= 0 && row < grid_.shape(0) && column >= 0 && column  < grid_.shape(1))
         *value = grid_.at(row, column);
       else
-        *value = -1000;
+        *value = -10;
     }
 
   private:

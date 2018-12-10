@@ -7,7 +7,7 @@ from shapely.geometry import LineString
 
 class Rangefinder:
     def __init__(self):
-        self.angular_resultion = 0.5  # 0.025
+        self.angular_resultion = 0.05  # 0.025
         self.min_angle = -math.pi
         self.max_angle = math.pi
         self.max_range = 30

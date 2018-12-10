@@ -21,3 +21,6 @@ find_package(pybind11 REQUIRED)
 
 pybind11_add_module(scan_matcher ${SOURCES})
 target_link_libraries(scan_matcher PRIVATE ${CERES_LIBRARIES})
+
+install(TARGETS scan_matcher DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/..)
+

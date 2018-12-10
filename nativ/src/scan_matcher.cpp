@@ -39,18 +39,7 @@ py::tuple match(py::array_t<double> point_cloud ,py::array_t<double> grid_map, d
 
   Solve( options, &problem, &summary );
   std::cout << summary.BriefReport() << "\n";
-  /*
-  double x = 0.5;
-  Problem problem;
-  CostFunction *cost_function = new AutoDiffCostFunction<CostFunctor, 1, 1>( new CostFunctor );
-  problem.AddResidualBlock( cost_function, NULL, &x );
 
-  Solver::Options options;
-  options.minimizer_progress_to_stdout = false;
-  Solver::Summary summary;
-  Solve( options, &problem, &summary );
-  //std::cout << summary.BriefReport() << "\n";
-  */
 
 
   return py::make_tuple(ceres_pose_estimate[0], ceres_pose_estimate[1], ceres_pose_estimate[2]);
