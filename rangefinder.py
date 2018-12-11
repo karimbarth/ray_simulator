@@ -3,6 +3,7 @@ import numpy as np
 
 import shapely
 from shapely.geometry import LineString
+from point_cloud import PointCloud
 
 
 class Rangefinder:
@@ -16,7 +17,7 @@ class Rangefinder:
         np.random.seed(43)
 
     def scan(self, environment, origin):
-        hits = []
+        point_cloud = PointCloud(origin, 0)
         for ray_angle in np.arange(self.min_angle, self.max_angle, self.angular_resultion):
             ray_angle_noise = np.random.normal(0, self.angular_variance, 1)
             ray_angle += ray_angle_noise
@@ -32,7 +33,7 @@ class Rangefinder:
                     np_ray = np.array([intersect.coords[0][0] - origin[0], intersect.coords[0][1] - origin[1]])
                     ray_length = np.linalg.norm(np_ray)
                     range_noise = np.random.normal(0, self.range_variance, 1)
-                    hits += [origin + np_ray * ((ray_length + range_noise) / ray_length)]
+                    point_cloud.add_point([origin + np_ray * ((ray_length + range_noise) / ray_length)])
                 elif (isinstance(intersect, shapely.geometry.multipoint.MultiPoint)):
                     # get observation closest to the sensor
                     # print(intersect)
@@ -46,7 +47,7 @@ class Rangefinder:
                     np_ray = np.array([nearest_observation.x - origin[0], nearest_observation.y - origin[1]])
                     ray_length = np.linalg.norm(np_ray)
                     range_noise = np.random.normal(0, self.range_variance, 1)
-                    hits += [origin + np_ray * ((ray_length + range_noise) / ray_length)]
+                    point_cloud.add_point([origin + np_ray * ((ray_length + range_noise) / ray_length)])
                 else:
                     print('Unhandled intersection type', type(intersect))
-        return hits
+        return point_cloud

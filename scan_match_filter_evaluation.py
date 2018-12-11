@@ -1,12 +1,13 @@
-import svgpathtools
 import math
-import numpy as np
-from shapely.geometry import MultiLineString
-import matplotlib.pyplot as plt
 
-from rangefinder import Rangefinder
-from grid_map import GridMap
+import matplotlib.pyplot as plt
 import nativ.scan_matcher as scan_matcher
+import numpy as np
+import svgpathtools
+from shapely.geometry import MultiLineString
+
+from grid_map import GridMap
+from rangefinder import Rangefinder
 
 DEFAULT_MAP = "floorplan_simplified.svg"
 DEFAULT_FILTER = "voxel_filter"
@@ -48,7 +49,7 @@ def svg_to_environment(svg_file, size=10):
     return obstacle
 
 
-def plot_scan(sensor_origin, estimate, hits, environment, title):
+def plot_scan(environment, sensor_origin, estimate, point_cloud, title):
     plt.figure()
     plt.title(title)
     for e in environment:
@@ -56,9 +57,9 @@ def plot_scan(sensor_origin, estimate, hits, environment, title):
         environment_x, environment_y = e.xy
         plt.plot(environment_x, environment_y, color='black', linewidth=2, label=label)
 
-    plt.plot(environment_x, environment_y, color='black', linewidth=1)
-    for i in range(hits.shape[1]):
-        hit = hits[:, i]
+    #plt.plot(environment_x, environment_y, color='black', linewidth=1)
+    hits = point_cloud.map_frame_list
+    for hit in hits:
         label = "hit" if "hit" not in plt.gca().get_legend_handles_labels()[1] else ""
         hit_ray = np.transpose(np.array([hit, sensor_origin]))
         plt.plot(hit_ray[0], hit_ray[1], color='green', linewidth=1, linestyle=':', label=label)
@@ -69,8 +70,7 @@ def plot_scan(sensor_origin, estimate, hits, environment, title):
     plt.legend(loc='lower right')
 
 
-def plot_grid_map(grid_map, sensor_origin, original_point_cloud, estimate_position,
-                  transformed_point_cloud):
+def plot_grid_map(grid_map, sensor_origin, estimate, point_cloud):
     fig = plt.figure()
     map_size = grid_map.size
     plt.title("Grid Map")
@@ -81,13 +81,15 @@ def plot_grid_map(grid_map, sensor_origin, original_point_cloud, estimate_positi
     plt.scatter([sensor_origin[0]], [sensor_origin[1]], s=np.array([100, 100]), marker='o', c='green',
                 label="sensor origin")
 
-    plt.scatter(original_point_cloud[0], original_point_cloud[1], s=np.array([120, 120]), marker='x', c='green',
+    ground_truth_point_cloud = point_cloud.map_frame_array
+    plt.scatter(ground_truth_point_cloud[0], ground_truth_point_cloud[1], s=np.array([120, 120]), marker='x', c='green',
                 label="original point cloud")
 
-    plt.scatter([estimate_position[0]], [estimate_position[1]], s=np.array([100, 100]), marker='o', c='red',
+    plt.scatter([estimate[0]], [estimate[1]], s=np.array([100, 100]), marker='o', c='red',
                 label="estimate")
 
-    plt.scatter(transformed_point_cloud[0], transformed_point_cloud[1], s=np.array([120, 120]), marker='x', c='red',
+    estimate_transformed_point_cloud = point_cloud.transform_from_lidar_frame_to(*estimate)
+    plt.scatter(estimate_transformed_point_cloud[0], estimate_transformed_point_cloud[1], s=np.array([120, 120]), marker='x', c='red',
                 label="estimated point cloud")
 
     ax = fig.axes[0]
@@ -117,22 +119,6 @@ def input_user_selection():
     return map_name, filter_name
 
 
-def make_scan(sensor_origin, obstacle):
-    rangefinder = Rangefinder()
-    # use 2d numpy array instead list of 1d numpy arrays
-    map_coords = np.stack(rangefinder.scan(obstacle, sensor_origin), axis=1)
-    # transform point cloud in lidar coordinate frame (currently without rotation)
-    sensor_coords = map_coords - np.array([[sensor_origin[0]], [sensor_origin[1]]])
-    return map_coords, sensor_coords
-
-
-def transform(x, translation, theta):
-    rotation = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
-    res = np.matmul(rotation, x) + translation
-
-    return res
-
-
 def evaluate():
     map_name, filter_name = input_user_selection()
     sensor_origin = (4, 3)
@@ -146,16 +132,15 @@ def evaluate():
     grid_map = GridMap(map_size, map_resolution)
     grid_map.load_environment(environment)
 
-    hits, hits_array = make_scan(sensor_origin, environment)
+    rangefinder = Rangefinder()
+    point_cloud = rangefinder.scan(environment, sensor_origin)
 
-    x, y, theta = scan_matcher.match(hits_array, grid_map.data, grid_map.resolution, initial_pose)
-    print("Result: ", x, ", ", y, ", ", theta)
+    estimate = scan_matcher.match(point_cloud.lidar_frame_array, grid_map.data, grid_map.resolution, initial_pose)
+    print("Result: ", estimate[0], ", ", estimate[1], ", ", estimate[2])
 
-    transformed_hits = transform(hits_array, np.array([[x], [y]]), theta)
+    plot_scan(environment, sensor_origin, estimate, point_cloud, "No Filter")
 
-    plot_scan(sensor_origin, (x, y), hits, environment, "No Filter")
-
-    plot_grid_map(grid_map, sensor_origin, hits, (x, y), transformed_hits)
+    plot_grid_map(grid_map, sensor_origin, estimate, point_cloud)
 
 
 if __name__ == '__main__':
