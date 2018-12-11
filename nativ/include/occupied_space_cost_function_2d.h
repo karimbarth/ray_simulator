@@ -33,7 +33,7 @@ namespace scan_matching {
 // a 'pose'. The cost increases with poorer correspondence of the grid and the
 // point observation (e.g. points falling into less occupied space).
 ceres::CostFunction* CreateOccupiedSpaceCostFunction2D(
-  const double scaling_factor, const py::array_t<double >& point_cloud, const py::array_t<double >& grid);
+  const double resolution, const py::array_t<double >& point_cloud, const py::array_t<double >& grid);
 
 }  // namespace scan_matching
 }  // namespace mapping

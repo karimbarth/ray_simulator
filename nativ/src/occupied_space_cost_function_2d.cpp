@@ -32,10 +32,10 @@ namespace
 class OccupiedSpaceCostFunction2D
 {
 public:
-  OccupiedSpaceCostFunction2D(const double scaling_factor,
+  OccupiedSpaceCostFunction2D(const double resolution,
                               const py::array_t<double >& point_cloud,
                               const py::array_t<double >& grid)
-    : scaling_factor_(scaling_factor),
+    : resolution_(resolution),
     point_cloud_(point_cloud),
     grid_(grid) {}
 
@@ -49,7 +49,7 @@ public:
     Eigen::Matrix<T, 3, 3> transform;
     transform << rotation_matrix, translation, T(0.), T(0.), T(1.);
 
-    const GridArrayAdapter adapter(grid_, scaling_factor_);
+    const GridArrayAdapter adapter(grid_);
     ceres::BiCubicInterpolator<GridArrayAdapter> interpolator(adapter);
 
     for(size_t i = 0; i < point_cloud_.shape(1); ++i)
@@ -58,7 +58,7 @@ public:
       const Eigen::Matrix<T, 3, 1> world = transform * point;
 
       T grid_map_value;
-      interpolator.Evaluate(world[0] * scaling_factor_, world[1] * scaling_factor_ , &grid_map_value);
+      interpolator.Evaluate(world[0] * resolution_, world[1] * resolution_ , &grid_map_value);
       residual[i] = T(1.) - grid_map_value;
     }
 
@@ -72,8 +72,8 @@ private:
   public:
     enum { DATA_DIMENSION = 1 };
 
-    explicit GridArrayAdapter(const py::array_t<double>& grid, const double scaling_factor)
-    : grid_(grid), scaling_factor_(scaling_factor_) {}
+    explicit GridArrayAdapter(const py::array_t<double>& grid)
+    : grid_(grid) {}
 
     void GetValue(const int row, const int column, double* const value) const {
       // inside the grid
@@ -85,13 +85,12 @@ private:
 
   private:
     const py::array_t<double>& grid_;
-    const double scaling_factor_;
   };
 
   OccupiedSpaceCostFunction2D(const OccupiedSpaceCostFunction2D&) = delete;
   OccupiedSpaceCostFunction2D& operator=(const OccupiedSpaceCostFunction2D&) = delete;
 
-  const double scaling_factor_;
+  const double resolution_;
   const py::array_t<double>& point_cloud_;
   const py::array_t<double>& grid_;
 
@@ -100,12 +99,12 @@ private:
 } // namespace
 
 ceres::CostFunction* CreateOccupiedSpaceCostFunction2D(
-  const double scaling_factor, const py::array_t<double>& point_cloud,
+  const double resolution, const py::array_t<double>& point_cloud,
   const py::array_t<double>& grid) {
   return new ceres::AutoDiffCostFunction<OccupiedSpaceCostFunction2D,
     ceres::DYNAMIC /* residuals */,
     3 /* pose variables */>(
-    new OccupiedSpaceCostFunction2D(scaling_factor, point_cloud, grid),
+    new OccupiedSpaceCostFunction2D(resolution, point_cloud, grid),
     point_cloud.shape(1));
 }
 
