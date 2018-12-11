@@ -13,20 +13,8 @@ using ceres::Problem;
 using ceres::Solver;
 using ceres::Solve;
 
-struct CostFunctor
-{
-  template<typename T>
-  bool operator()( const T *const x, T *residual ) const
-  {
-    residual[0] = 10.0 - x[0];
-    return true;
-  }
-};
-
 py::tuple match(py::array_t<double> point_cloud ,py::array_t<double> grid_map, double resolution, py::array_t<double> initial_pose )
 {
-  //auto grid_map_proxy = grid_map.unchecked<2>();
-  //auto point_cloud_proxy = point_cloud.unchecked<2>();
 
   double ceres_pose_estimate[3] = {initial_pose.at(0), initial_pose.at(1), initial_pose.at(2)}; // initial pose
 
@@ -40,15 +28,9 @@ py::tuple match(py::array_t<double> point_cloud ,py::array_t<double> grid_map, d
   Solve( options, &problem, &summary );
   std::cout << summary.BriefReport() << "\n";
 
-
-
   return py::make_tuple(ceres_pose_estimate[0], ceres_pose_estimate[1], ceres_pose_estimate[2]);
 }
 
-//#include <boost/python/module.hpp>
-//#include <boost/python/def.hpp>
-
-//using namespace boost::python;
 
 PYBIND11_MODULE( scan_matcher, m )
 {
