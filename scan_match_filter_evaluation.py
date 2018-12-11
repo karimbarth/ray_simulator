@@ -1,10 +1,11 @@
 import svgpathtools
 import math
 import numpy as np
-from shapely.geometry import MultiLineString, Point
+from shapely.geometry import MultiLineString
 import matplotlib.pyplot as plt
 
 from rangefinder import Rangefinder
+from grid_map import GridMap
 import nativ.scan_matcher as scan_matcher
 
 DEFAULT_MAP = "floorplan_simplified.svg"
@@ -47,17 +48,6 @@ def svg_to_environment(svg_file, size=10):
     return obstacle
 
 
-def create_grid_map(environment, size, resolution):
-    num_cells = int(size / resolution)
-    grid_map = np.zeros((num_cells, num_cells))
-
-    for i in range(num_cells):
-        for j in range(num_cells):
-            grid_map[i, j] = environment.distance(Point(i * resolution, j * resolution)) < resolution
-
-    return grid_map
-
-
 def plot_scan(sensor_origin, estimate, hits, environment, title):
     plt.figure()
     plt.title(title)
@@ -79,14 +69,14 @@ def plot_scan(sensor_origin, estimate, hits, environment, title):
     plt.legend(loc='lower right')
 
 
-def plot_grid_map(grid_map, map_resolution, sensor_origin, original_point_cloud, estimate_position,
+def plot_grid_map(grid_map, sensor_origin, original_point_cloud, estimate_position,
                   transformed_point_cloud):
     fig = plt.figure()
-    map_size = grid_map.shape[0] * map_resolution
+    map_size = grid_map.size
     plt.title("Grid Map")
-    index_array = np.where(grid_map == 1)
-    plt.scatter(index_array[0] * map_resolution, index_array[1] * map_resolution,
-                s=np.array([120 * map_resolution, 120 * map_resolution]), marker='x', c='black', label="map obstacle")
+    index_array = grid_map.obstacle_indices
+    plt.scatter(index_array[0], index_array[1], s=grid_map.resolution * np.array([120, 120]), marker='x',
+                c='black', label="map obstacle")
 
     plt.scatter([sensor_origin[0]], [sensor_origin[1]], s=np.array([100, 100]), marker='o', c='green',
                 label="sensor origin")
@@ -102,7 +92,7 @@ def plot_grid_map(grid_map, map_resolution, sensor_origin, original_point_cloud,
 
     ax = fig.axes[0]
     major_ticks = np.arange(0, map_size, 1)
-    minor_ticks = np.arange(0, map_size, map_resolution)
+    minor_ticks = np.arange(0, map_size, grid_map.resolution)
 
     ax.set_xticks(major_ticks)
     ax.set_xticks(minor_ticks, minor=True)
@@ -153,18 +143,19 @@ def evaluate():
     print("Estimate with initial pose: ", initial_pose)
 
     environment = svg_to_environment("./geometries/" + map_name, map_size)
-    grid_map = create_grid_map(environment, map_size, map_resolution)
+    grid_map = GridMap(map_size, map_resolution)
+    grid_map.load_environment(environment)
 
     hits, hits_array = make_scan(sensor_origin, environment)
 
-    x, y, theta = scan_matcher.match(hits_array, grid_map, map_resolution, initial_pose)
+    x, y, theta = scan_matcher.match(hits_array, grid_map.data, grid_map.resolution, initial_pose)
     print("Result: ", x, ", ", y, ", ", theta)
 
     transformed_hits = transform(hits_array, np.array([[x], [y]]), theta)
 
     plot_scan(sensor_origin, (x, y), hits, environment, "No Filter")
 
-    plot_grid_map(grid_map, map_resolution, sensor_origin, hits, (x, y), transformed_hits)
+    plot_grid_map(grid_map, sensor_origin, hits, (x, y), transformed_hits)
 
 
 if __name__ == '__main__':
