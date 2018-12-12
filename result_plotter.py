@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 
 def plot_scan(environment, sensor_origin, estimate, point_cloud, title):
@@ -41,7 +42,8 @@ def plot_grid_map(grid_map, sensor_origin, estimate, point_cloud):
                 label="estimate")
 
     estimate_transformed_point_cloud = point_cloud.transform_from_lidar_frame_to(*estimate)
-    plt.scatter(estimate_transformed_point_cloud[0], estimate_transformed_point_cloud[1], s=np.array([120, 120]), marker='x', c='red',
+    plt.scatter(estimate_transformed_point_cloud[0], estimate_transformed_point_cloud[1], s=np.array([120, 120]),
+                marker='x', c='red',
                 label="estimated point cloud")
 
     ax = fig.axes[0]
@@ -56,3 +58,33 @@ def plot_grid_map(grid_map, sensor_origin, estimate, point_cloud):
     ax.grid(which='major', alpha=0.5)
 
     plt.legend(loc='lower right')
+
+
+def plot_cost_function(cost_function, x_range, y_range, resolution, point1, point2):
+    x = np.arange(x_range[0], x_range[1], resolution)
+    y = np.arange(y_range[0], y_range[1], resolution)
+
+    X, Y = np.meshgrid(x, y)
+    Z = np.vectorize(cost_function)(X, Y)
+
+    fig = plt.figure()
+    fig.suptitle(r'Cost function with $\theta = 0$')
+    ax = fig.gca(projection='3d')
+    surf = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=plt.cm.RdBu, linewidth=0, antialiased=False)
+    ax.zaxis.set_major_locator(plt.LinearLocator(10))
+    ax.zaxis.set_major_formatter(plt.FormatStrFormatter('%.02f'))
+
+    ax.set_xlabel('x-position')
+    ax.set_ylabel('y-position')
+    ax.set_zlabel('cost function')
+    ax.view_init(elev=25, azim=-120)
+
+    fig.colorbar(surf, shrink=0.5, aspect=5)
+
+    # Plot 2D
+    fig = plt.figure()
+    im = plt.imshow(Z, cmap=plt.cm.RdBu)
+    cset = plt.contour(Z, [cost_function(point1[0], point1[1]), cost_function(point2[0], point2[1])],
+                       linewidths=2, cmap=plt.cm.Set2)
+    plt.clabel(cset, inline=True, fmt='%1.1f', fontsize=10)
+    plt.colorbar(im)

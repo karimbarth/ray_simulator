@@ -58,7 +58,7 @@ public:
       const Eigen::Matrix<T, 3, 1> world = transform * point;
 
       T grid_map_value;
-      interpolator.Evaluate(world[0] * resolution_, world[1] * resolution_ , &grid_map_value);
+      interpolator.Evaluate(world[0] / resolution_, world[1] / resolution_ , &grid_map_value);
       residual[i] = T(1.) - grid_map_value;
     }
 
@@ -80,7 +80,7 @@ private:
       if(row >= 0 && row < grid_.shape(0) && column >= 0 && column  < grid_.shape(1))
         *value = grid_.at(row, column);
       else
-        *value = -10;
+        *value = 0;
     }
 
   private:

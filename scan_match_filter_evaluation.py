@@ -10,7 +10,7 @@ from grid_map import GridMap
 from rangefinder import Rangefinder
 import result_plotter
 
-DEFAULT_MAP = "floorplan_simplified.svg"
+DEFAULT_MAP = "floorplan_simplified.svg"  # "test.svg"
 DEFAULT_FILTER = "voxel_filter"
 
 
@@ -65,18 +65,20 @@ def input_user_selection():
 
 def evaluate():
     map_name, filter_name = input_user_selection()
-    sensor_origin = (4, 3)
-    initial_pose = np.array([0, 0, 0])
-    map_size = 10
+    sensor_origin = (4, 8)
     map_resolution = 0.1
+    cloud_size = 20
+    map_size = 10
 
+    initial_pose = np.array([sensor_origin[0], sensor_origin[1], 0]) + (
+                4 * map_resolution * np.random.random(3) - map_resolution * 2)
     print("Estimate with initial pose: ", initial_pose)
 
     environment = svg_to_environment("./geometries/" + map_name, map_size)
     grid_map = GridMap(map_size, map_resolution)
     grid_map.load_environment(environment)
 
-    rangefinder = Rangefinder()
+    rangefinder = Rangefinder(cloud_size)
     point_cloud = rangefinder.scan(environment, sensor_origin)
 
     estimate = scan_matcher.match(point_cloud.lidar_frame_array, grid_map.data, grid_map.resolution, initial_pose)
@@ -84,6 +86,16 @@ def evaluate():
 
     result_plotter.plot_scan(environment, sensor_origin, estimate, point_cloud, "No Filter")
     result_plotter.plot_grid_map(grid_map, sensor_origin, estimate, point_cloud)
+
+    result_plotter.plot_cost_function(
+        lambda x, y: scan_matcher.evaluate_cost_function(point_cloud.lidar_frame_array, grid_map.data,
+                                                         grid_map.resolution, np.array([x, y, 0])),
+        (sensor_origin[0] - 2 * map_resolution, sensor_origin[0] + 2 * map_resolution),
+        (sensor_origin[1] - 2 * map_resolution, sensor_origin[1] + 2 * map_resolution),
+        map_resolution * 0.1,
+        (sensor_origin[0] + map_resolution, sensor_origin[1] + map_resolution),
+        (sensor_origin[0] + 2*map_resolution, sensor_origin[1] + 2*map_resolution)
+    )
 
 
 if __name__ == '__main__':
