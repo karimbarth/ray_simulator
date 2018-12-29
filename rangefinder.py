@@ -7,13 +7,13 @@ from point_cloud import PointCloud
 
 
 class Rangefinder:
-    def __init__(self, max_num_points):
+    def __init__(self, max_num_points, range_variance=0.012, angular_variance=0.0):
         self.min_angle = -math.pi
         self.max_angle = math.pi
         self.angular_resultion = (self.max_angle - self.min_angle)/max_num_points  # 0.025
         self.max_range = 30
-        self.range_variance = 0.012
-        self.angular_variance = 0.0
+        self.range_variance = range_variance
+        self.angular_variance = angular_variance
         np.random.seed(43)
 
     def scan(self, environment, origin):

@@ -3,7 +3,24 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 
-def plot_scan(environment, sensor_origin, estimate, point_cloud, title):
+def plot_radius_of_convergence(error, grid_map):
+    plt.figure()
+    plt.title(
+        'Radius of convergence\n' + r'Sensor origin: $o$, Initial pose $x_0$, Estimate $\xi_{xy}$, map resolution r=' + str(
+            grid_map.resolution))
+
+    plt.scatter(error[:, 0], error[:, 1], marker='x', c='blue', label="ground truth")
+    plt.plot([2 * grid_map.resolution, 2 * grid_map.resolution], [0, 1.0], c='red', linestyle=':')
+    plt.plot([0, 1], [0.2 * grid_map.resolution, 0.2 * grid_map.resolution], c='green', linestyle=':')
+    plt.text(2 * grid_map.resolution + 0.01, 0.9, r'$2r$', color='r')
+    plt.text(1.02, 0.2 * grid_map.resolution, r'$0.2r$', color='g')
+    plt.xlim(0, 1.0)
+    plt.ylim(0, 1.0)
+    plt.xlabel(r"$ \Vert o - x_0 \Vert_2 $")
+    plt.ylabel(r"$ \Vert o - \xi_{xy} \Vert_2 $")
+
+
+def plot_scan(environment, sensor_origin, estimates, point_cloud, title):
     plt.figure()
     plt.title(title)
     for e in environment:
@@ -19,11 +36,11 @@ def plot_scan(environment, sensor_origin, estimate, point_cloud, title):
 
     plt.scatter([sensor_origin[0]], [sensor_origin[1]], s=np.array([100, 100]), marker='x', c='blue', label="ground "
                                                                                                             "truth")
-    plt.scatter([estimate[0]], [estimate[1]], s=np.array([100, 100]), marker='x', c='red', label="estimate")
+    # plt.scatter([estimates[0][0]], [estimates[0][1]], s=np.array([100, 100]), marker='x', c='red', label="estimate")
     plt.legend(loc='lower right')
 
 
-def plot_grid_map(grid_map, sensor_origin, estimate, point_cloud):
+def plot_grid_map(grid_map, sensor_origin, estimates, point_cloud):
     fig = plt.figure()
     map_size = grid_map.size
     plt.title("Grid Map")
@@ -37,15 +54,16 @@ def plot_grid_map(grid_map, sensor_origin, estimate, point_cloud):
     ground_truth_point_cloud = point_cloud.map_frame_array
     plt.scatter(ground_truth_point_cloud[0], ground_truth_point_cloud[1], s=np.array([120, 120]), marker='x', c='green',
                 label="original point cloud")
-
-    plt.scatter([estimate[0]], [estimate[1]], s=np.array([100, 100]), marker='o', c='red',
+    '''
+    plt.scatter([estimates[0][0]], [estimates[0][1]], s=np.array([100, 100]), marker='o', c='red',
                 label="estimate")
 
-    estimate_transformed_point_cloud = point_cloud.transform_from_lidar_frame_to(*estimate)
+    
+    estimate_transformed_point_cloud = point_cloud.transform_from_lidar_frame_to(*estimates[0])
     plt.scatter(estimate_transformed_point_cloud[0], estimate_transformed_point_cloud[1], s=np.array([120, 120]),
                 marker='x', c='red',
                 label="estimated point cloud")
-
+    '''
     ax = fig.axes[0]
     major_ticks = np.arange(0, map_size, 1)
     minor_ticks = np.arange(0, map_size, grid_map.resolution)
