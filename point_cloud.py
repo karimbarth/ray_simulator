@@ -5,7 +5,7 @@ class PointCloud:
     def __init__(self, lidar_origin, lidar_orientation):
         self.lidar_origin_ = lidar_origin
         self.lidar_orientation_ = 0
-        self.points_ = []
+        self.points_ = list()
         self.lidar_frame_array_ = None
         self.map_frame_array_ = None
 
@@ -13,6 +13,14 @@ class PointCloud:
         self.points_ += point
         self.lidar_frame_array_ = None
         self.map_frame_array_ = None
+
+    @property
+    def lidar_origin(self):
+        return self.lidar_origin_
+
+    @property
+    def lidar_orientation(self):
+        return self.lidar_orientation_
 
     @property
     def count(self):
