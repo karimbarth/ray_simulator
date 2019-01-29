@@ -103,7 +103,7 @@ def plot_filter_statistics(mean, std, grid_map, filter_type):
     Y = np.array(list(map(lambda m: mean[m], X)))
     Std = np.array(list(map(lambda m: std[m], X)))
     plt.plot(X, Y, color='red', linewidth=2, label="mean error")
-    plt.fill_between(X, Y - Std, Y + Std, facecolor='red', alpha=0.4, label="standard derivation")
+    plt.fill_between(X, Y - Std, Y + Std, facecolor='red', alpha=0.4, label="standard deviation")
     plt.plot([5, 80], [0.2 * grid_map.resolution, 0.2 * grid_map.resolution], c='green', linestyle=':')
     plt.text(81, 0.2 * grid_map.resolution, r'$0.2r$', color='g')
     plt.ylim(0, 0.15)
