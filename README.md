@@ -10,7 +10,7 @@ evaluation of ip
 ## Build native code 
  open conda env in terminal
  ```sh
-    cd $Path_to_ray_simulator/nativ 
+    cd ${Project_Name}/native 
     mkdir build 
     cd build 
     cmake ..

@@ -1,7 +1,7 @@
 import math
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-import nativ.scan_matcher as scan_matcher
+import native.scan_matcher as scan_matcher
 import numpy as np
 import svgpathtools
 from shapely.geometry import MultiLineString
