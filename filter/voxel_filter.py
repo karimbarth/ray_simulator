@@ -77,36 +77,6 @@ class AdaptivelyVoxelFilter(PointCloudFilter):
         return point_cloud
 
 
-def adaptively_voxel_filtered(point_cloud, min_number_of_points, max_length):
-    if point_cloud.count <= min_number_of_points:
-        return point_cloud
 
-    result = VoxelFilter(max_length).filter(point_cloud)
-    if result.count >= min_number_of_points:
-        return result
-
-    high_length = max_length
-    while high_length > 1e-2:
-        low_length = high_length / 2.
-        result = VoxelFilter(low_length).filter(point_cloud)
-
-        if result.count >= min_number_of_points:
-            '''
-                Binary search to find the right amount of filtering. 'low_length' gave
-                a sufficiently dense 'result', 'high_length' did not. We stop when the
-                edge length is at most 10% off.
-            '''
-            while (high_length - low_length) / low_length > 1e-1:
-                mid_length = (low_length + high_length) / 2.
-                point_cloud_candidate = VoxelFilter(mid_length).filter(point_cloud)
-                if point_cloud_candidate.count >= min_number_of_points:
-                    low_length = mid_length
-                    result = point_cloud_candidate
-                else:
-                    high_length = mid_length
-            return result
-        high_length /= 2.
-
-    return point_cloud
 
 

@@ -101,14 +101,25 @@ def plot_filter_statistics(filter_results, resolution):
     plt.legend(loc='upper right')
 
 
-def __plot_mean_std(filter_name, filter_result):
-    mean = filter_result[0]
-    std = filter_result[1]
-    X = np.array(list(mean.keys()))
-    Y = np.array(list(map(lambda m: mean[m], X)))
-    Std = np.array(list(map(lambda m: std[m], X)))
-    plt.plot(X, Y, linewidth=2, label=filter_name + " mean")
-    plt.fill_between(X, Y - Std, Y + Std, alpha=0.4, label=filter_name + " std")
+def plot_points_on_map(environment, map_points):
+    """
+    plot the given points in the environment
+    :param environment: the svg figure
+    :param points: set of points
+    :return:
+    """
+    plt.figure()
+    plt.title('Points used for recorded data')
+    __plot_environment(environment)
+
+    scale = 1
+    for key in map_points:
+        points = map_points[key]
+        data_in_array = np.array(list(points))
+        plt.scatter(data_in_array[:, 0], data_in_array[:, 1], s=scale*np.array([100, 100]), marker='o', label=key)
+        scale = scale/2
+
+    plt.legend(loc='lower right')
 
 
 def plot_cost_function(cost_function, x_range, y_range, resolution, point1, point2):
@@ -167,6 +178,15 @@ def __plot_environment(environment):
         environment_x, environment_y = e.xy
         plt.plot(environment_x, environment_y, color='black', linewidth=2, label=label)
 
+
+def __plot_mean_std(filter_name, filter_result):
+    mean = filter_result[0]
+    std = filter_result[1]
+    X = np.array(list(mean.keys()))
+    Y = np.array(list(map(lambda m: mean[m], X)))
+    Std = np.array(list(map(lambda m: std[m], X)))
+    plt.plot(X, Y, linewidth=2, label=filter_name + " mean")
+    plt.fill_between(X, Y - Std, Y + Std, alpha=0.4, label=filter_name + " std")
 
 
 # def plot_scan_matching(grid_map, point_cloud, estimate, step=3):
