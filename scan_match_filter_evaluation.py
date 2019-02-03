@@ -8,9 +8,10 @@ from grid_map import GridMap, load_svg_environment
 from rangefinder import Rangefinder
 from filter.voxel_filter import AdaptivelyVoxelFilter
 from filter.simple_filter import RandomFilter
+from filter.normal_filter import MaxEntropyNormalAngleFilter
 import result_plotter
 
-DEFAULT_MAP = "floorplan_simplified.svg"  # "test.svg"
+DEFAULT_MAP = "floorplan_simplified.svg"  # "normal_test.svg"  #"floorplan_simplified.svg"  # "test.svg"
 DEFAULT_FILTER = "voxel_filter"
 
 
@@ -99,8 +100,9 @@ def evaluate_radius_of_convergence(grid_map, point_cloud, sample_count=200):
     result_plotter.plot_radius_of_convergence(errors, grid_map.resolution, point_cloud.count)
 
 
-def voxel_filter_visualization(environment, point_cloud, map_size, min_number_of_points=10):
-    voxel_filter = AdaptivelyVoxelFilter(2*map_size)
+def voxel_filter_visualization(environment, point_cloud, map_size, min_number_of_points=30):
+    point_cloud.calc_normals()
+    voxel_filter = MaxEntropyNormalAngleFilter(20)
     voxel_filter.set_wished_size(min_number_of_points)
 
     filtered_pc = voxel_filter.apply(point_cloud)
@@ -119,14 +121,14 @@ def scan_matching_visualization(grid_map, point_cloud):
 
 
 def normal_filter_visualization(environment, point_cloud):
-    result_plotter.plot_normal_filter_visualization(environment, point_cloud, step=1)
-    result_plotter.plot_normal_filter_visualization(environment, point_cloud, step=2)
+    point_cloud.calc_normals()
+    result_plotter.plot_normals(environment, point_cloud)
 
 
 def evaluate():
     # init params
 
-    sensor_origin = (5, 5)#(4, 4)#(4, 8)
+    sensor_origin = (2, 2) #(5, 5)#(4, 4)#(4, 8)
     map_resolution = 0.1
     cloud_size = 80 #25 #80  # 80  # 5 - 80 const
     map_size = 10
@@ -141,9 +143,9 @@ def evaluate():
     point_cloud = rangefinder.scan(environment, sensor_origin)
 
     #generate_map_data(grid_map, point_cloud)
-    evaluate_map_data(map_resolution, environment)
+    #evaluate_map_data(map_resolution, environment)
     #evaluate_radius_of_convergence(grid_map, point_cloud, sample_count=200)
-    #voxel_filter_visualization(environment, point_cloud, map_size)
+    voxel_filter_visualization(environment, point_cloud, map_size)
     #evaluate_voxel_filter(grid_map, point_cloud, sample_count)
     #scan_matching_visualization(grid_map, point_cloud)
     #normal_filter_visualization(environment, point_cloud)

@@ -1,43 +1,43 @@
 import numpy as np
 from point_cloud import PointCloud
 
-
-def pca(points):
-    cov = np.cov(points)
-    eigen_values = np.linalg.eig(cov)
-    min_index = np.argmin(eigen_values)
-    eigen_vectors = np.linalg.eigvals(cov)
-    return eigen_vectors[min_index]
+from filter.point_cloud_filter import PointCloudFilter
 
 
-def estimate_normal(point, neighbors, viewpoint):
-    normal_candidate = pca(neighbors)
-    dir = np.dot(normal_candidate, viewpoint - point)
-    return normal_candidate if dir > 0 else  -normal_candidate
+class MaxEntropyNormalAngleFilter(PointCloudFilter):
+
+    def __init__(self, number_of_bins):
+        super()
+        self.__number_of_bins = number_of_bins
+
+    def apply(self, point_cloud):
+        bin_size = 2 * np.pi / self.__number_of_bins
+        histogram = [list() for _ in range(self.__number_of_bins)]
+        result = PointCloud(point_cloud.lidar_origin, point_cloud.lidar_orientation)
+        list_of_points = point_cloud.map_frame_list
+
+        # generate histogram
+        for index in range(len(list_of_points)):
+            angle = point_cloud.get_descriptor("normals_direction", index)
+            bin_index = int(np.floor(angle/bin_size))
+            histogram[bin_index].append(index)
+
+        # remove points of the largest remaining bin to maximize entropy of resulting normal angle distribution
+        for _ in range(point_cloud.count - self.wished_size):
+            lengths = list(map(lambda histogram_bin: len(histogram_bin), histogram))
+            index = lengths.index(max(lengths))
+            histogram[index].pop(0)
+
+        # create result point cloud
+        for histogram_bin in histogram:
+            for index in histogram_bin:
+                result.add_point([list_of_points[index]])
+                result.add_descriptor("normals", point_cloud.get_descriptor("normals", index))
+                result.add_descriptor("normals_direction", point_cloud.get_descriptor("normals_direction", index))
+
+        return result
 
 
-def select_neighborhood(point, points, ball_radius):
-    neighbors = []
-    for single_point in points:
-        distance = np.linalg.norm(point - single_point)
-        if distance <= ball_radius:
-            neighbors.append(single_point)
-
-    return neighbors
-
-
-def estimate_normals(point_cloud, distance=0.02):
-    normals = []
-    for point in point_cloud.map_frame_list:
-        normal = estimate_normal(point, select_neighborhood(point, point_cloud.map_frame_list, distance), point_cloud.lidar_origin)
-        normals.append(normal)
-    return normals
-
-
-def filter(point_cloud, number_of_points):
-    normals = estimate_normals(point_cloud)
-    result = PointCloud(point_cloud.lidar_origin, point_cloud.lidar_orientation)
-    return result
 
 
 
