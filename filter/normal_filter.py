@@ -9,6 +9,7 @@ class MaxEntropyNormalAngleFilter(PointCloudFilter):
     def __init__(self, number_of_bins):
         super()
         self.__number_of_bins = number_of_bins
+        self.set_name("max_entropy_normal_filter")
 
     def apply(self, point_cloud):
         bin_size = 2 * np.pi / self.__number_of_bins

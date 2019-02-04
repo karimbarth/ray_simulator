@@ -70,14 +70,15 @@ def evaluate_filters(grid_map, point_cloud, point_cloud_filters, data_manager, s
 
 def generate_map_data(grid_map, point_cloud):
     sample_count = 200
+    point_cloud.calc_normals()
     data_manager = DataManager("floorplan_simplified", "perfect")
-    point_cloud_filters = [RandomFilter(), AdaptivelyVoxelFilter(2 * grid_map.size)]
+    point_cloud_filters = [MaxEntropyNormalAngleFilter(number_of_bins=20), RandomFilter(), AdaptivelyVoxelFilter(2 * grid_map.size)]
     evaluate_filters(grid_map, point_cloud, point_cloud_filters, data_manager, sample_count)
 
 
 def evaluate_map_data(map_resolution, environment):
     data_manager = DataManager("floorplan_simplified", "perfect")
-    filter_types = ["random_filter", "voxel_filter"]
+    filter_types = ["random_filter", "voxel_filter", "max_entropy_normal_filter"]
     filter_results = dict()
     point_map = dict()
     for filter_name in filter_types:
@@ -128,7 +129,7 @@ def normal_filter_visualization(environment, point_cloud):
 def evaluate():
     # init params
 
-    sensor_origin = (2, 2) #(5, 5)#(4, 4)#(4, 8)
+    sensor_origin = (1.5, 7.) #(5, 5)#(4, 4)#(4, 8)
     map_resolution = 0.1
     cloud_size = 80 #25 #80  # 80  # 5 - 80 const
     map_size = 10
@@ -143,9 +144,9 @@ def evaluate():
     point_cloud = rangefinder.scan(environment, sensor_origin)
 
     #generate_map_data(grid_map, point_cloud)
-    #evaluate_map_data(map_resolution, environment)
+    evaluate_map_data(map_resolution, environment)
     #evaluate_radius_of_convergence(grid_map, point_cloud, sample_count=200)
-    voxel_filter_visualization(environment, point_cloud, map_size)
+    #voxel_filter_visualization(environment, point_cloud, map_size)
     #evaluate_voxel_filter(grid_map, point_cloud, sample_count)
     #scan_matching_visualization(grid_map, point_cloud)
     #normal_filter_visualization(environment, point_cloud)
