@@ -17,6 +17,7 @@ DEFAULT_FILTER = "voxel_filter"
 
 def evaluate_position(grid_map, point_cloud, point_cloud_filter, sample_count=200, evaluation_radius=2):
     filtered_point_cloud = point_cloud_filter.apply(point_cloud)
+    true_size = filtered_point_cloud.count
     sensor_origin = filtered_point_cloud.lidar_origin
     map_resolution = grid_map.resolution
     errors = np.zeros((sample_count, 2))  # init abs translation error, result abs translation error
@@ -34,7 +35,7 @@ def evaluate_position(grid_map, point_cloud, point_cloud_filter, sample_count=20
         estimates += estimate
         errors[n, 1] = np.linalg.norm(np.asarray(sensor_origin) - np.array([estimate[0], estimate[1]]))
 
-    return errors
+    return errors, true_size
 
 
 def evaluate_point_cloud_sizes(grid_map, point_cloud, point_cloud_filter, data_manager, sample_count=200, min_size=5):
@@ -47,10 +48,10 @@ def evaluate_point_cloud_sizes(grid_map, point_cloud, point_cloud_filter, data_m
 
     for n in tqdm(range(start, min_size-1, -1)):
         point_cloud_filter.set_wished_size(n)
-        errors = evaluate_position(grid_map, point_cloud, point_cloud_filter, sample_count=sample_count)
-        means[n] = np.mean(errors[:, 1])
-        std[n] = np.std(errors[:, 1])
-        data[n] = errors
+        errors, true_size = evaluate_position(grid_map, point_cloud, point_cloud_filter, sample_count=sample_count)
+        means[true_size] = np.mean(errors[:, 1])
+        std[true_size] = np.std(errors[:, 1])
+        data[true_size] = errors
 
     data_manager.add_data(data, point_cloud.lidar_origin)
     data_manager.safe_and_close()
@@ -68,12 +69,25 @@ def evaluate_filters(grid_map, point_cloud, point_cloud_filters, data_manager, s
     result_plotter.plot_filter_statistics(filter_results, grid_map.resolution)
 
 
-def generate_map_data(grid_map, point_cloud):
-    sample_count = 200
-    point_cloud.calc_normals()
+def generate_map_data(grid_map, environment):
+    sample_count = 100
+    cloud_size = 80
     data_manager = DataManager("floorplan_simplified", "perfect")
-    point_cloud_filters = [MaxEntropyNormalAngleFilter(number_of_bins=20), RandomFilter(), AdaptivelyVoxelFilter(2 * grid_map.size)]
-    evaluate_filters(grid_map, point_cloud, point_cloud_filters, data_manager, sample_count)
+    point_cloud_filters = [MaxEntropyNormalAngleFilter(number_of_bins=20), RandomFilter(),
+                           AdaptivelyVoxelFilter(2 * grid_map.size)]
+    points = [(1.5, 1.5), (3, 1.5), (4.5, 1.5),
+              (1.5, 2.5), (3, 3), (5, 2.4),
+              (3, 3), (5, 3.5),
+              (3.5, 5),
+              (1.5, 7), (3.5, 7),
+              (2.5, 8), (4, 8), (5, 8.5),
+              (6.5, 8.5), (8, 8)]
+    for point in points:
+        print("Process point: ", point)
+        rangefinder = Rangefinder(cloud_size, range_variance=0.012)
+        point_cloud = rangefinder.scan(environment, point)
+        point_cloud.calc_normals()
+        evaluate_filters(grid_map, point_cloud, point_cloud_filters, data_manager, sample_count)
 
 
 def evaluate_map_data(map_resolution, environment):
@@ -95,7 +109,7 @@ def evaluate_map_data(map_resolution, environment):
 
 def evaluate_radius_of_convergence(grid_map, point_cloud, sample_count=200):
     random_filter = RandomFilter()
-    errors = evaluate_position(grid_map, point_cloud, random_filter,
+    errors, true_size = evaluate_position(grid_map, point_cloud, random_filter,
                                sample_count=sample_count, evaluation_radius=10)
 
     result_plotter.plot_radius_of_convergence(errors, grid_map.resolution, point_cloud.count)
@@ -129,7 +143,7 @@ def normal_filter_visualization(environment, point_cloud):
 def evaluate():
     # init params
 
-    sensor_origin = (1.5, 7.) #(5, 5)#(4, 4)#(4, 8)
+    sensor_origin = (2, 2) #(5, 5)#(4, 4)#(4, 8)
     map_resolution = 0.1
     cloud_size = 80 #25 #80  # 80  # 5 - 80 const
     map_size = 10
@@ -143,14 +157,13 @@ def evaluate():
     rangefinder = Rangefinder(cloud_size, range_variance=0.012)
     point_cloud = rangefinder.scan(environment, sensor_origin)
 
-    #generate_map_data(grid_map, point_cloud)
+    #generate_map_data(grid_map, environment)
     evaluate_map_data(map_resolution, environment)
     #evaluate_radius_of_convergence(grid_map, point_cloud, sample_count=200)
     #voxel_filter_visualization(environment, point_cloud, map_size)
     #evaluate_voxel_filter(grid_map, point_cloud, sample_count)
     #scan_matching_visualization(grid_map, point_cloud)
     #normal_filter_visualization(environment, point_cloud)
-
 
 
 if __name__ == '__main__':

@@ -3,6 +3,12 @@ import numpy as np
 import pickle
 
 
+def sorted_key_list(key_list):
+    result = list(key_list)
+    result.sort()
+    return result
+
+
 class Datatype:
     def __init__(self, map_name, map_type, filter_name, transformation_type,
                  positions, pre_opti_error, post_opti_error):
@@ -53,13 +59,14 @@ class Datatype:
 
     def post_means(self):
         means = dict()
-        for key in self.__post_opti_error.keys():
+
+        for key in sorted_key_list(self.__post_opti_error.keys()):
             means[key] = np.mean(self.__post_opti_error[key])
         return means
 
     def post_std(self):
         std = dict()
-        for key in self.__post_opti_error.keys():
+        for key in sorted_key_list(self.__post_opti_error.keys()):
             std[key] = np.std(self.__post_opti_error[key])
         return std
 
