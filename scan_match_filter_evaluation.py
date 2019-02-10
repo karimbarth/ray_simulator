@@ -140,6 +140,11 @@ def normal_filter_visualization(environment, point_cloud):
     result_plotter.plot_normals(environment, point_cloud)
 
 
+def test_function(point_cloud, grid_map):
+    temp = scan_matcher.evaluate_position_with_samples(point_cloud.lidar_frame_array, grid_map.data, grid_map.resolution,
+                                                np.array([2, 2, 0]), 200, 2.0)
+    print(temp)
+
 def evaluate():
     # init params
 
@@ -157,8 +162,9 @@ def evaluate():
     rangefinder = Rangefinder(cloud_size, range_variance=0.012)
     point_cloud = rangefinder.scan(environment, sensor_origin)
 
+    test_function(point_cloud, grid_map)
     #generate_map_data(grid_map, environment)
-    evaluate_map_data(map_resolution, environment)
+    #evaluate_map_data(map_resolution, environment)
     #evaluate_radius_of_convergence(grid_map, point_cloud, sample_count=200)
     #voxel_filter_visualization(environment, point_cloud, map_size)
     #evaluate_voxel_filter(grid_map, point_cloud, sample_count)
