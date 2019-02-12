@@ -11,7 +11,7 @@ def sorted_key_list(key_list):
 
 class Datatype:
     def __init__(self, map_name, map_type, filter_name, transformation_type,
-                 positions, pre_opti_error, post_opti_error):
+                 positions, pre_opti_error, post_opti_error, pre_orientation_error, post_orientation_error, num_iter):
         self.__map_name = map_name
         self.__map_type = map_type
         self.__filter_name = filter_name
@@ -19,6 +19,9 @@ class Datatype:
         self.__positions = positions
         self.__pre_opti_error = pre_opti_error
         self.__post_opti_error = post_opti_error
+        self.__pre_orientation_error = pre_orientation_error
+        self.__post_orientation_error = post_orientation_error
+        self.__num_iter = num_iter
 
     @property
     def filter_name(self):
@@ -40,22 +43,56 @@ class Datatype:
     def post_opti_error(self):
         return self.__post_opti_error
 
+    @property
+    def pre_orientation_error(self):
+        return self.__pre_orientation_error
+
+    @property
+    def post_orientation_error(self):
+        return self.__post_orientation_error
+
+    @property
+    def num_iter(self):
+        return self.__num_iter
+
     def add_position(self, position):
         self.__positions.add(position)
 
     def add_data(self, data):
         for key in data.keys():
-            pre_data = (data[key])[:, 0]
-            post_data = (data[key])[:, 1]
-            if key in self.__pre_opti_error:
-                self.__pre_opti_error[key] = np.append(self.__pre_opti_error[key], pre_data)
-            else:
-                self.__pre_opti_error[key] = pre_data
+            pre_translation_data = (data[key])[0, :]
+            post_translation_data = (data[key])[1, :]
+            pre_orientation_data = (data[key])[2, :]
+            post_orientation_data = (data[key])[3, :]
+            num_iter_data = (data[key])[4, :]
 
-            if key in self.__post_opti_error:
-                self.__post_opti_error[key] = np.append(self.__post_opti_error[key], post_data)
+            # translation error before optimization
+            if key in self.__pre_opti_error:
+                self.__pre_opti_error[key] = np.append(self.__pre_opti_error[key], pre_translation_data)
             else:
-                self.__post_opti_error[key] = post_data
+                self.__pre_opti_error[key] = pre_translation_data
+            # translation error after optimization
+            if key in self.__post_opti_error:
+                self.__post_opti_error[key] = np.append(self.__post_opti_error[key], post_translation_data)
+            else:
+                self.__post_opti_error[key] = post_translation_data
+
+            # rotation error before optimization
+            if key in self.__pre_orientation_error:
+                self.__pre_orientation_error[key] = np.append(self.__pre_orientation_error[key], pre_orientation_data)
+            else:
+                self.__pre_orientation_error[key] = pre_orientation_data
+            # rotation error after optimization
+            if key in self.__post_orientation_error:
+                self.__post_orientation_error[key] = np.append(self.__post_orientation_error[key], post_orientation_data)
+            else:
+                self.__post_orientation_error[key] = post_orientation_data
+
+            # num iteration needed for optimization
+            if key in self.__num_iter:
+                self.__num_iter[key] = np.append(self.__num_iter[key], num_iter_data)
+            else:
+                self.__num_iter[key] = num_iter_data
 
     def post_means(self):
         means = dict()
@@ -96,18 +133,25 @@ class DataManager:
             pkl_file.close()
 
             positions = root["positions"]
+            num_iter = root["num_iter"]
             error_data = root["data"]
-            pre_opti_error = error_data["pre"]
-            post_opti_error = error_data["post"]
+            pre_opti_error = error_data["pre_trans"]
+            post_opti_error = error_data["post_trans"]
+            pre_orientation_error = error_data["pre_orientation"]
+            post_orientation_error = error_data["post_orientation"]
 
             self.__data = Datatype(self.__map_name, self.__map_type, filter_name, transformation_type,
-                                   positions, pre_opti_error, post_opti_error)
+                                   positions, pre_opti_error, post_opti_error, pre_orientation_error,
+                                   post_orientation_error, num_iter)
         else:
             positions = set()
-            pre = dict()
-            post = dict()
+            pre_trans = dict()
+            post_trans = dict()
+            pre_orientation = dict()
+            post_orientation = dict()
+            num_iter = dict()
             self.__data = Datatype(self.__map_name, self.__map_type, filter_name, transformation_type, positions,
-                                   pre, post)
+                                   pre_trans, post_trans, pre_orientation, post_orientation, num_iter)
 
     def add_data(self, data, position):
         if self.__data is None:
@@ -127,9 +171,12 @@ class DataManager:
 
             root = dict()
             root["positions"] = self.__data.positions
+            root["num_iter"] = self.__data.num_iter
             error_data = dict()
-            error_data["pre"] = self.__data.pre_opti_error
-            error_data["post"] = self.__data.post_opti_error
+            error_data["pre_trans"] = self.__data.pre_opti_error
+            error_data["post_trans"] = self.__data.post_opti_error
+            error_data["pre_orientation"] = self.__data.pre_orientation_error
+            error_data["post_orientation"] = self.__data.post_orientation_error
             root["data"] = error_data
 
             # np.save(root, path)

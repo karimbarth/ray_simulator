@@ -48,10 +48,15 @@ def evaluate_point_cloud_sizes(grid_map, point_cloud, point_cloud_filter, data_m
 
     for n in tqdm(range(start, min_size-1, -1)):
         point_cloud_filter.set_wished_size(n)
-        errors, true_size = evaluate_position(grid_map, point_cloud, point_cloud_filter, sample_count=sample_count)
-        means[true_size] = np.mean(errors[:, 1])
-        std[true_size] = np.std(errors[:, 1])
-        data[true_size] = errors
+        filtered_point_cloud = point_cloud_filter.apply(point_cloud)
+        true_size = filtered_point_cloud.count
+        initial_pose = np.array([filtered_point_cloud.lidar_origin[0], filtered_point_cloud.lidar_origin[1], 0])
+        collected_data = scan_matcher.evaluate_position_with_samples(filtered_point_cloud.lidar_frame_array,
+                                                                     grid_map.data, grid_map.resolution, initial_pose,
+                                                                     sample_count, 2.0)
+        means[true_size] = np.mean(collected_data[1, :])
+        std[true_size] = np.std(collected_data[1, :])
+        data[true_size] = collected_data
 
     data_manager.add_data(data, point_cloud.lidar_origin)
     data_manager.safe_and_close()
@@ -84,7 +89,7 @@ def generate_map_data(grid_map, environment):
               (6.5, 8.5), (8, 8)]
     for point in points:
         print("Process point: ", point)
-        rangefinder = Rangefinder(cloud_size, range_variance=0.012)
+        rangefinder = Rangefinder(cloud_size, range_variance=0.1)
         point_cloud = rangefinder.scan(environment, point)
         point_cloud.calc_normals()
         evaluate_filters(grid_map, point_cloud, point_cloud_filters, data_manager, sample_count)
@@ -145,6 +150,7 @@ def test_function(point_cloud, grid_map):
                                                 np.array([2, 2, 0]), 200, 2.0)
     print(temp)
 
+
 def evaluate():
     # init params
 
@@ -159,12 +165,12 @@ def evaluate():
     grid_map = GridMap(map_size, map_resolution)
     grid_map.load_environment(environment)
 
-    rangefinder = Rangefinder(cloud_size, range_variance=0.012)
+    rangefinder = Rangefinder(cloud_size, range_variance=0.1)
     point_cloud = rangefinder.scan(environment, sensor_origin)
 
-    test_function(point_cloud, grid_map)
+    #test_function(point_cloud, grid_map)
     #generate_map_data(grid_map, environment)
-    #evaluate_map_data(map_resolution, environment)
+    evaluate_map_data(map_resolution, environment)
     #evaluate_radius_of_convergence(grid_map, point_cloud, sample_count=200)
     #voxel_filter_visualization(environment, point_cloud, map_size)
     #evaluate_voxel_filter(grid_map, point_cloud, sample_count)

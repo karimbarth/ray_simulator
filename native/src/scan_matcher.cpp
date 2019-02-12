@@ -73,7 +73,7 @@ evaluate_position_with_samples( py::array_t<double> point_cloud, py::array_t<dou
   {
     int size = omp_get_num_threads();
     int rank= omp_get_thread_num();
-    gen.split(size, rank);
+    //gen.split(size, rank);
     trng::uniform_dist<> angle_distribution(0.0,2*M_PI);
     trng::uniform_dist<> distance_distribution(0.0, evaluation_radius * resolution);
 
