@@ -11,7 +11,7 @@ from filter.simple_filter import RandomFilter
 from filter.normal_filter import MaxEntropyNormalAngleFilter
 import result_plotter
 
-DEFAULT_MAP = "floorplan_simplified.svg"  # "normal_test.svg"  #"floorplan_simplified.svg"  # "test.svg"
+DEFAULT_MAP = "floorplan_simplified"  # "normal_test.svg"  #"floorplan_simplified.svg"  # "test.svg"
 DEFAULT_FILTER = "voxel_filter"
 
 
@@ -71,13 +71,12 @@ def evaluate_filters(grid_map, point_cloud, point_cloud_filters, data_manager, s
         mean, std = evaluate_point_cloud_sizes(grid_map, point_cloud, pc_filter, data_manager, sample_count=sample_count)
         filter_results[pc_filter.name] = (mean, std)
 
-    result_plotter.plot_filter_statistics(filter_results, grid_map.resolution)
-
 
 def generate_map_data(grid_map, environment):
     sample_count = 100
     cloud_size = 80
-    data_manager = DataManager("floorplan_simplified", "perfect")
+    rangefinder_noise = 0.1
+    data_manager = DataManager(DEFAULT_MAP, "perfect")
     point_cloud_filters = [MaxEntropyNormalAngleFilter(number_of_bins=20), RandomFilter(),
                            AdaptivelyVoxelFilter(2 * grid_map.size)]
     points = [(1.5, 1.5), (3, 1.5), (4.5, 1.5),
@@ -89,7 +88,7 @@ def generate_map_data(grid_map, environment):
               (6.5, 8.5), (8, 8)]
     for point in points:
         print("Process point: ", point)
-        rangefinder = Rangefinder(cloud_size, range_variance=0.1)
+        rangefinder = Rangefinder(cloud_size, range_variance=rangefinder_noise, angular_variance=rangefinder_noise)
         point_cloud = rangefinder.scan(environment, point)
         point_cloud.calc_normals()
         evaluate_filters(grid_map, point_cloud, point_cloud_filters, data_manager, sample_count)
@@ -98,17 +97,31 @@ def generate_map_data(grid_map, environment):
 def evaluate_map_data(map_resolution, environment):
     data_manager = DataManager("floorplan_simplified", "perfect")
     filter_types = ["random_filter", "voxel_filter", "max_entropy_normal_filter"]
-    filter_results = dict()
+    filter_translation_results = dict()
+    filter_orientation_results = dict()
+    filter_iter_results = dict()
     point_map = dict()
     for filter_name in filter_types:
         data_manager.load_data(filter_name, "translation")
-        mean = data_manager.data.post_means()
-        std = data_manager.data.post_std()
-        filter_results[filter_name] = (mean, std)
+
+        trans_mean = data_manager.data.post_translation_means()
+        trans_std = data_manager.data.post_translation_std()
+        filter_translation_results[filter_name] = (trans_mean, trans_std)
+
+        orientation_mean = data_manager.data.post_rotation_means()
+        orientation_std = data_manager.data.post_rotation_std()
+        filter_orientation_results[filter_name] = (orientation_mean, orientation_std)
+
+        iter_mean = data_manager.data.iter_means()
+        iter_std = data_manager.data.iter_std()
+        filter_iter_results[filter_name] = (iter_mean, iter_std)
+
         point_map[filter_name] = data_manager.data.positions
         data_manager.readonly_close()
 
-    result_plotter.plot_filter_statistics(filter_results, map_resolution)
+    result_plotter.plot_filter_statistics_translation(filter_translation_results, map_resolution)
+    result_plotter.plot_filter_statistics_orientation(filter_orientation_results, map_resolution)
+    result_plotter.plot_filter_statistics_iter(filter_iter_results, map_resolution)
     result_plotter.plot_points_on_map(environment, point_map)
 
 
@@ -145,12 +158,6 @@ def normal_filter_visualization(environment, point_cloud):
     result_plotter.plot_normals(environment, point_cloud)
 
 
-def test_function(point_cloud, grid_map):
-    temp = scan_matcher.evaluate_position_with_samples(point_cloud.lidar_frame_array, grid_map.data, grid_map.resolution,
-                                                np.array([2, 2, 0]), 200, 2.0)
-    print(temp)
-
-
 def evaluate():
     # init params
 
@@ -161,12 +168,9 @@ def evaluate():
     sample_count = 200
     # end init
 
-    environment = load_svg_environment("./geometries/" + DEFAULT_MAP, map_size)
+    environment = load_svg_environment("./geometries/" + DEFAULT_MAP + ".svg", map_size)
     grid_map = GridMap(map_size, map_resolution)
     grid_map.load_environment(environment)
-
-    rangefinder = Rangefinder(cloud_size, range_variance=0.1)
-    point_cloud = rangefinder.scan(environment, sensor_origin)
 
     #test_function(point_cloud, grid_map)
     #generate_map_data(grid_map, environment)

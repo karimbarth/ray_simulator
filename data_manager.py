@@ -94,17 +94,41 @@ class Datatype:
             else:
                 self.__num_iter[key] = num_iter_data
 
-    def post_means(self):
+    def post_translation_means(self):
         means = dict()
 
         for key in sorted_key_list(self.__post_opti_error.keys()):
             means[key] = np.mean(self.__post_opti_error[key])
         return means
 
-    def post_std(self):
+    def post_translation_std(self):
         std = dict()
         for key in sorted_key_list(self.__post_opti_error.keys()):
             std[key] = np.std(self.__post_opti_error[key])
+        return std
+
+    def post_rotation_means(self):
+        means = dict()
+        for key in sorted_key_list(self.post_orientation_error.keys()):
+            means[key] = np.mean(self.post_orientation_error[key])
+        return means
+
+    def post_rotation_std(self):
+        std = dict()
+        for key in sorted_key_list(self.post_orientation_error.keys()):
+            std[key] = np.std(self.post_orientation_error[key])
+        return std
+
+    def iter_means(self):
+        means = dict()
+        for key in sorted_key_list(self.num_iter.keys()):
+            means[key] = np.mean(self.num_iter[key])
+        return means
+
+    def iter_std(self):
+        std = dict()
+        for key in sorted_key_list(self.num_iter.keys()):
+            std[key] = np.std(self.num_iter[key])
         return std
 
 

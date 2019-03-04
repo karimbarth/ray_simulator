@@ -75,7 +75,7 @@ def plot_filtered_point_cloud(environment, point_cloud, filtered_point_cloud, fi
     plt.legend(loc='lower right')
 
 
-def plot_filter_statistics(filter_results, resolution):
+def plot_filter_statistics_translation(filter_results, resolution):
     """ Plot the mean and std of the error using a specific filter with different point cloud sizes
 
                 mean: dict(number_points -> mean) the mean error of the specific filter resolution
@@ -87,7 +87,7 @@ def plot_filter_statistics(filter_results, resolution):
                 filter_type: the name of the filter which was used.
     """
     plt.figure()
-    plt.title('Compare different filters')
+    plt.title("Translation Error")
 
     for key in filter_results.keys():
         __plot_mean_std(key, filter_results[key])
@@ -98,6 +98,55 @@ def plot_filter_statistics(filter_results, resolution):
     plt.xlim(5, 80)
     plt.xlabel("Point cloud size")
     plt.ylabel(r"$ \Vert o - \xi_{xy} \Vert_2 $")
+    plt.legend(loc='upper right')
+
+
+def plot_filter_statistics_orientation(filter_results, resolution):
+    """ Plot the mean and std of the error using a specific filter with different point cloud sizes
+
+                mean: dict(number_points -> mean) the mean error of the specific filter resolution
+
+                std: dict(number_points -> mean) the std of the error of the specific filter resolution
+
+                grid_map:
+
+                filter_type: the name of the filter which was used.
+    """
+    plt.figure()
+    plt.title("Orientation Error")
+
+    for key in filter_results.keys():
+        __plot_mean_std(key, filter_results[key])
+
+    plt.plot([5, 80], [0.2 * resolution, 0.2 * resolution], c='green', linestyle=':')
+    plt.text(81, 0.2 * resolution, r'$0.2r$', color='g')
+    plt.ylim(0, 0.2)
+    plt.xlim(5, 80)
+    plt.xlabel("Point cloud size")
+    plt.ylabel(r"$ \Vert o - \xi_{\theta} \Vert_2 $")
+    plt.legend(loc='upper right')
+
+
+def plot_filter_statistics_iter(filter_results, resolution):
+    """ Plot the mean and std of the error using a specific filter with different point cloud sizes
+
+                mean: dict(number_points -> mean) the mean error of the specific filter resolution
+
+                std: dict(number_points -> mean) the std of the error of the specific filter resolution
+
+                grid_map:
+
+                filter_type: the name of the filter which was used.
+    """
+    plt.figure()
+    plt.title("Optimization Iteration")
+
+    for key in filter_results.keys():
+        __plot_mean_std(key, filter_results[key])
+
+    plt.xlim(5, 80)
+    plt.xlabel("Point cloud size")
+    plt.ylabel("Iterations")
     plt.legend(loc='upper right')
 
 
