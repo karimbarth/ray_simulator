@@ -1,3 +1,0 @@
-sample_count = 100
-cloud_size = 80
-rangefinder_noise = 0.1
