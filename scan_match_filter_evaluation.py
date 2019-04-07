@@ -95,7 +95,7 @@ def generate_map_data(grid_map, environment):
 
 
 def evaluate_map_data(map_resolution, environment):
-    data_manager = DataManager("floorplan_simplified", "perfect")
+    data_manager = DataManager(DEFAULT_MAP, "perfect")
     filter_types = ["random_filter", "voxel_filter", "max_entropy_normal_filter"]
     filter_translation_results = dict()
     filter_orientation_results = dict()
