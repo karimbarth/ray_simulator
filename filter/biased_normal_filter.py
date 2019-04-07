@@ -1,6 +1,5 @@
 import numpy as np
 from point_cloud import PointCloud
-import random
 
 from filter.point_cloud_filter import PointCloudFilter
 
@@ -10,7 +9,7 @@ class MaxEntropyNormalAngleFilter(PointCloudFilter):
     def __init__(self, number_of_bins):
         super()
         self.__number_of_bins = number_of_bins
-        self.set_name("normal_filter")
+        self.set_name("biased_normal_filter")
 
     def apply(self, point_cloud):
         bin_size = 2 * np.pi / self.__number_of_bins
@@ -28,10 +27,7 @@ class MaxEntropyNormalAngleFilter(PointCloudFilter):
         for _ in range(point_cloud.count - self.wished_size):
             lengths = list(map(lambda histogram_bin: len(histogram_bin), histogram))
             index = lengths.index(max(lengths))
-
-            # remove random point from bin
-            point_index = random.randint(0, len(histogram[index]))
-            histogram[index].pop(point_index)
+            histogram[index].pop(0)
 
         # create result point cloud
         for histogram_bin in histogram:
