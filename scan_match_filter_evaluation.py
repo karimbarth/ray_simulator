@@ -8,10 +8,11 @@ from grid_map import GridMap, load_svg_environment
 from rangefinder import Rangefinder
 from filter.voxel_filter import AdaptivelyVoxelFilter
 from filter.simple_filter import RandomFilter
-from filter.normal_filter import MaxEntropyNormalAngleFilter
+from filter.normal_filter import NormalFilter
+from filter.biased_normal_filter import BiasedNormalFilter
 import result_plotter
 
-DEFAULT_MAP = "floorplan_simplified"  # "normal_test.svg"  #"floorplan_simplified.svg"  # "test.svg"
+DEFAULT_MAP = "long_floor"  # "normal_test.svg"  #"floorplan_simplified.svg"  # "test.svg"
 DEFAULT_FILTER = "voxel_filter"
 
 
@@ -77,15 +78,25 @@ def generate_map_data(grid_map, environment):
     cloud_size = 80
     rangefinder_noise = 0.1
     data_manager = DataManager(DEFAULT_MAP, "perfect")
-    point_cloud_filters = [MaxEntropyNormalAngleFilter(number_of_bins=20), RandomFilter(),
+    #point_cloud_filters = [NormalFilter(number_of_bins=20), RandomFilter(),
+    #                       AdaptivelyVoxelFilter(2 * grid_map.size)]
+
+    point_cloud_filters = [NormalFilter(number_of_bins=20), BiasedNormalFilter(number_of_bins=20),
                            AdaptivelyVoxelFilter(2 * grid_map.size)]
-    points = [(1.5, 1.5), (3, 1.5), (4.5, 1.5),
-              (1.5, 2.5), (3, 3), (5, 2.4),
-              (3, 3), (5, 3.5),
-              (3.5, 5),
-              (1.5, 7), (3.5, 7),
-              (2.5, 8), (4, 8), (5, 8.5),
-              (6.5, 8.5), (8, 8)]
+
+    #points = [(1.5, 1.5), (3, 1.5), (4.5, 1.5),
+    #          (1.5, 2.5), (3, 3), (5, 2.4),
+    #          (3, 3), (5, 3.5),
+    #          (3.5, 5),
+    #          (1.5, 7), (3.5, 7),
+    #          (2.5, 8), (4, 8), (5, 8.5),
+    #          (6.5, 8.5), (8, 8)]
+
+    points = [(1.5, 1.5), (2, 1.5), (2.5, 1.5), (3, 1.5), (3.5, 1.5),
+              (4, 1.5), (4.5, 1.5), (5, 1.5), (5.5, 1.5), (6, 1.5),
+              (6.5, 1.5), (7, 1.5), (7.5, 1.5), (8, 1.5), (8.5, 1.5)]
+
+
     for point in points:
         print("Process point: ", point)
         rangefinder = Rangefinder(cloud_size, range_variance=rangefinder_noise, angular_variance=rangefinder_noise)
@@ -96,7 +107,7 @@ def generate_map_data(grid_map, environment):
 
 def evaluate_map_data(map_resolution, environment):
     data_manager = DataManager(DEFAULT_MAP, "perfect")
-    filter_types = ["random_filter", "voxel_filter", "normal_filter"]
+    filter_types = ["normal_filter", "biased_normal_filter", "voxel_filter"]
     filter_translation_results = dict()
     filter_orientation_results = dict()
     filter_iter_results = dict()

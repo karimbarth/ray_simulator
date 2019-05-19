@@ -4,7 +4,7 @@ from point_cloud import PointCloud
 from filter.point_cloud_filter import PointCloudFilter
 
 
-class MaxEntropyNormalAngleFilter(PointCloudFilter):
+class BiasedNormalFilter(PointCloudFilter):
 
     def __init__(self, number_of_bins):
         super()

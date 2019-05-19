@@ -5,7 +5,7 @@ import random
 from filter.point_cloud_filter import PointCloudFilter
 
 
-class MaxEntropyNormalAngleFilter(PointCloudFilter):
+class NormalFilter(PointCloudFilter):
 
     def __init__(self, number_of_bins):
         super()
@@ -30,7 +30,7 @@ class MaxEntropyNormalAngleFilter(PointCloudFilter):
             index = lengths.index(max(lengths))
 
             # remove random point from bin
-            point_index = random.randint(0, len(histogram[index]))
+            point_index = random.randint(0, len(histogram[index])-1)
             histogram[index].pop(point_index)
 
         # create result point cloud
