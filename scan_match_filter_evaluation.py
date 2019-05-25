@@ -12,7 +12,7 @@ from filter.normal_filter import NormalFilter
 from filter.biased_normal_filter import BiasedNormalFilter
 import result_plotter
 
-DEFAULT_MAP = "long_floor"  # "normal_test.svg"  #"floorplan_simplified.svg"  # "test.svg"
+DEFAULT_MAP = "test"  #"long_floor"  # "normal_test.svg"  #"floorplan_simplified.svg"  # "test.svg"
 DEFAULT_FILTER = "voxel_filter"
 
 
@@ -40,7 +40,7 @@ def evaluate_position(grid_map, point_cloud, point_cloud_filter, sample_count=20
 
 
 def evaluate_point_cloud_sizes(grid_map, point_cloud, point_cloud_filter, data_manager, sample_count=200, min_size=5):
-    data_manager.load_data(point_cloud_filter.name, "translation")
+    data_manager.load_data(point_cloud_filter.name)
     means = dict()
     std = dict()
     data = dict()
@@ -73,16 +73,12 @@ def evaluate_filters(grid_map, point_cloud, point_cloud_filters, data_manager, s
         filter_results[pc_filter.name] = (mean, std)
 
 
-def generate_map_data(grid_map, environment):
-    sample_count = 100
-    cloud_size = 80
-    rangefinder_noise = 0.1
-    data_manager = DataManager(DEFAULT_MAP, "perfect")
-    #point_cloud_filters = [NormalFilter(number_of_bins=20), RandomFilter(),
-    #                       AdaptivelyVoxelFilter(2 * grid_map.size)]
+def generate_map_data(grid_map, environment, map_name, dir_name, prefix, sample_count, cloud_size, rangefinder_noise, points):
+
+    data_manager = DataManager(map_name, dir_name, prefix)
 
     point_cloud_filters = [NormalFilter(number_of_bins=20), BiasedNormalFilter(number_of_bins=20),
-                           AdaptivelyVoxelFilter(2 * grid_map.size)]
+                           AdaptivelyVoxelFilter(2 * grid_map.size), RandomFilter()]
 
     #points = [(1.5, 1.5), (3, 1.5), (4.5, 1.5),
     #          (1.5, 2.5), (3, 3), (5, 2.4),
@@ -92,10 +88,10 @@ def generate_map_data(grid_map, environment):
     #          (2.5, 8), (4, 8), (5, 8.5),
     #          (6.5, 8.5), (8, 8)]
 
-    points = [(1.5, 1.5), (2, 1.5), (2.5, 1.5), (3, 1.5), (3.5, 1.5),
-              (4, 1.5), (4.5, 1.5), (5, 1.5), (5.5, 1.5), (6, 1.5),
-              (6.5, 1.5), (7, 1.5), (7.5, 1.5), (8, 1.5), (8.5, 1.5)]
-
+    #points = [(1.5, 1.5), (2, 1.5), (2.5, 1.5), (3, 1.5), (3.5, 1.5),
+     #         (4, 1.5), (4.5, 1.5), (5, 1.5), (5.5, 1.5), (6, 1.5),
+      #        (6.5, 1.5), (7, 1.5), (7.5, 1.5), (8, 1.5), (8.5, 1.5)]
+    #points = [(5.5, 5.5)]
 
     for point in points:
         print("Process point: ", point)
@@ -113,7 +109,7 @@ def evaluate_map_data(map_resolution, environment):
     filter_iter_results = dict()
     point_map = dict()
     for filter_name in filter_types:
-        data_manager.load_data(filter_name, "translation")
+        data_manager.load_data(filter_name)
 
         trans_mean = data_manager.data.post_translation_means()
         trans_std = data_manager.data.post_translation_std()
@@ -146,7 +142,7 @@ def evaluate_radius_of_convergence(grid_map, point_cloud, sample_count=200):
 
 def voxel_filter_visualization(environment, point_cloud, map_size, min_number_of_points=30):
     point_cloud.calc_normals()
-    voxel_filter = MaxEntropyNormalAngleFilter(20)
+    voxel_filter = AdaptivelyVoxelFilter(2 * map_size)
     voxel_filter.set_wished_size(min_number_of_points)
 
     filtered_pc = voxel_filter.apply(point_cloud)
@@ -179,13 +175,14 @@ def evaluate():
     sample_count = 200
     # end init
 
-    environment = load_svg_environment("./geometries/" + DEFAULT_MAP + ".svg", map_size)
+    environment = load_svg_environment("./geometries/" + DEFAULT_MAP + ".svg", map_size, 0.5)
     grid_map = GridMap(map_size, map_resolution)
     grid_map.load_environment(environment)
+    #result_plotter.plot_points_on_map(environment, [])
 
     #test_function(point_cloud, grid_map)
     #generate_map_data(grid_map, environment)
-    evaluate_map_data(map_resolution, environment)
+    #evaluate_map_data(map_resolution, environment)
     #evaluate_radius_of_convergence(grid_map, point_cloud, sample_count=200)
     #voxel_filter_visualization(environment, point_cloud, map_size)
     #evaluate_voxel_filter(grid_map, point_cloud, sample_count)

@@ -243,10 +243,16 @@ def __plot_environment(environment):
 
         environment: the svg environment
     """
+    plt.grid(True)
+
     for e in environment:
         label = "environment" if "environment" not in plt.gca().get_legend_handles_labels()[1] else ""
         environment_x, environment_y = e.xy
         plt.plot(environment_x, environment_y, color='black', linewidth=2, label=label)
+
+
+def __plot_grid_map(map):
+    print("Hallo World")
 
 
 def __plot_mean_std(filter_name, filter_result):
@@ -257,5 +263,9 @@ def __plot_mean_std(filter_name, filter_result):
     Std = np.array(list(map(lambda m: std[m], X)))
     plt.plot(X, Y, linewidth=2, label=filter_name + " mean")
     plt.fill_between(X, Y - Std, Y + Std, alpha=0.4, label=filter_name + " std")
+
+
+
+
 
 

@@ -10,12 +10,10 @@ def sorted_key_list(key_list):
 
 
 class Datatype:
-    def __init__(self, map_name, map_type, filter_name, transformation_type,
+    def __init__(self, map_name, filter_name,
                  positions, pre_opti_error, post_opti_error, pre_orientation_error, post_orientation_error, num_iter):
         self.__map_name = map_name
-        self.__map_type = map_type
         self.__filter_name = filter_name
-        self.__transformation_type = transformation_type
         self.__positions = positions
         self.__pre_opti_error = pre_opti_error
         self.__post_opti_error = post_opti_error
@@ -26,10 +24,6 @@ class Datatype:
     @property
     def filter_name(self):
         return self.__filter_name
-
-    @property
-    def transformation_type(self):
-        return self.__transformation_type
 
     @property
     def positions(self):
@@ -133,22 +127,31 @@ class Datatype:
 
 
 class DataManager:
-    def __init__(self, map_name, map_type):
+    def __init__(self, map_name, dir_name, prefix):
         self.__map_name = map_name
-        self.__map_type = map_type
+        self.__dir_name = dir_name
+        self.__prefix = prefix
         self.__data = None
+
+    def path(self, filter_name):
+        return "data/" + self.__dir_name + "/" + self.__prefix + "_" + self.__map_name + "_" + filter_name + ".npy"
+
+    def dir_path(self):
+        return "data/" + self.__dir_name
 
     @property
     def data(self):
         return self.__data
 
-    def load_data(self, filter_name, transformation_type):
+    def load_data(self, filter_name):
 
         if self.__data:
             print("DataManger already opens a file, please close it! All changes are lost!")
 
-        path = "data/2d/evaluate_" + self.__map_name + "_" + self.__map_type \
-               + "_" + filter_name + "_" + transformation_type + ".npy"
+        path = self.path(filter_name)
+
+        #path = "data/2d/evaluate_" + self.__map_name + "_" + self.__map_type \
+        #       + "_" + filter_name + "_" + transformation_type + ".npy"
 
         if os.path.isfile(path):
 
@@ -164,7 +167,7 @@ class DataManager:
             pre_orientation_error = error_data["pre_orientation"]
             post_orientation_error = error_data["post_orientation"]
 
-            self.__data = Datatype(self.__map_name, self.__map_type, filter_name, transformation_type,
+            self.__data = Datatype(self.__map_name, filter_name,
                                    positions, pre_opti_error, post_opti_error, pre_orientation_error,
                                    post_orientation_error, num_iter)
         else:
@@ -174,7 +177,7 @@ class DataManager:
             pre_orientation = dict()
             post_orientation = dict()
             num_iter = dict()
-            self.__data = Datatype(self.__map_name, self.__map_type, filter_name, transformation_type, positions,
+            self.__data = Datatype(self.__map_name, filter_name, positions,
                                    pre_trans, post_trans, pre_orientation, post_orientation, num_iter)
 
     def add_data(self, data, position):
@@ -190,8 +193,15 @@ class DataManager:
             print("No file is open!")
             return
         else:
-            path = "data/2d/evaluate_" + self.__map_name + "_" + self.__map_type \
-                   + "_" + self.__data.filter_name + "_" + self.__data.transformation_type + ".npy"
+
+           # path = "data/2d/evaluate_" + self.__map_name + "_" + self.__map_type \
+           #        + "_" + self.__data.filter_name + "_" + self.__data.transformation_type + ".npy"
+
+            dir_path = self.dir_path()
+            if not os.path.exists(dir_path):
+                os.mkdir(dir_path)
+
+            path = self.path(self.__data.filter_name)
 
             root = dict()
             root["positions"] = self.__data.positions

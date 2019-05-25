@@ -4,7 +4,7 @@ from shapely.geometry import Point, MultiLineString
 import svgpathtools
 
 
-def load_svg_environment(svg_file, size=10):
+def load_svg_environment(svg_file, size=10, offset=1):
     paths = svgpathtools.svg2paths(svg_file, return_svg_attributes=False)[0]
 
     points = []
@@ -24,9 +24,7 @@ def load_svg_environment(svg_file, size=10):
             if line.start.imag > max_y:
                 max_y = line.start.imag
 
-    i = 0
-    offset = 1
-    scale = size - 2
+    scale = size - 2*offset
     for path in paths:
         for line in path:
             p_start_x = offset + scale * (line.start.real - min_x) / (max_x - min_x)
